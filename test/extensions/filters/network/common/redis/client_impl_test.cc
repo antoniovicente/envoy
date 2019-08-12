@@ -47,7 +47,7 @@ public:
     client_.reset();
 
     EXPECT_TRUE(TestUtility::gaugesZeroed(host_->cluster_.stats_store_.gauges()));
-    EXPECT_TRUE(TestUtility::gaugesZeroed(host_->stats_store_.gauges()));
+    EXPECT_TRUE(TestUtility::gaugesZeroed(host_->stats_.gauges()));
   }
 
   void setup() {

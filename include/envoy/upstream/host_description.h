@@ -29,11 +29,27 @@ namespace Upstream {
   GAUGE(cx_active, Accumulate)                                                                     \
   GAUGE(rq_active, Accumulate)
 
+#define REFERENCE_INLINE_NULL(X)
+#define REFERENCE_INLINE_NULL_IGNORE_MODE(X, MODE)
+#define REFERENCE_INLINE_COUNTER(X) X ## _,
+#define REFERENCE_INLINE_GAUGE(X, MODE) X ## _,
+
 /**
  * All per host stats defined. @see stats_macros.h
  */
 struct HostStats {
-  ALL_HOST_STATS(GENERATE_COUNTER_STRUCT, GENERATE_GAUGE_STRUCT)
+  ALL_HOST_STATS(INLINE_SIMPLE_COUNTER_STRUCT, INLINE_SIMPLE_GAUGE_STRUCT);
+
+  std::vector<std::reference_wrapper<const Stats::SimpleCounter>> counters() const {
+    return {
+      ALL_HOST_STATS(REFERENCE_INLINE_COUNTER, REFERENCE_INLINE_NULL_IGNORE_MODE)
+    };
+  }
+  std::vector<std::reference_wrapper<const Stats::SimpleGauge>> gauges() const {
+    return {
+      ALL_HOST_STATS(REFERENCE_INLINE_NULL, REFERENCE_INLINE_GAUGE)
+    };
+  }
 };
 
 class ClusterInfo;
@@ -94,7 +110,7 @@ public:
   /**
    * @return host specific stats.
    */
-  virtual const HostStats& stats() const PURE;
+  virtual HostStats& stats() const PURE;
 
   /**
    * @return the locality of the host (deployment specific). This will be the default instance if

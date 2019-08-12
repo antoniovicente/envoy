@@ -376,36 +376,30 @@ void AdminImpl::writeClustersAsJson(Buffer::Instance& response) {
         Network::Utility::addressToProtobufAddress(*host->address(),
                                                    *host_status.mutable_address());
         host_status.set_hostname(host->hostname());
-        std::vector<Stats::CounterSharedPtr> sorted_counters;
-        for (const Stats::CounterSharedPtr& counter : host->counters()) {
-          sorted_counters.push_back(counter);
-        }
+        std::vector<std::reference_wrapper<const Stats::SimpleCounter>> sorted_counters = host->counters();
         std::sort(
             sorted_counters.begin(), sorted_counters.end(),
-            [](const Stats::CounterSharedPtr& counter1, const Stats::CounterSharedPtr& counter2) {
-              return counter1->name() < counter2->name();
+            [](const Stats::SimpleCounter& counter1, const Stats::SimpleCounter& counter2) {
+              return counter1.name() < counter2.name();
             });
 
-        for (const Stats::CounterSharedPtr& counter : sorted_counters) {
+        for (const Stats::SimpleCounter& counter : sorted_counters) {
           auto& metric = *host_status.add_stats();
-          metric.set_name(counter->name());
-          metric.set_value(counter->value());
+          metric.set_name(std::string(counter.name()));
+          metric.set_value(counter.value());
           metric.set_type(envoy::admin::v2alpha::SimpleMetric::COUNTER);
         }
 
-        std::vector<Stats::GaugeSharedPtr> sorted_gauges;
-        for (const Stats::GaugeSharedPtr& gauge : host->gauges()) {
-          sorted_gauges.push_back(gauge);
-        }
+        std::vector<std::reference_wrapper<const Stats::SimpleGauge>> sorted_gauges = host->gauges();
         std::sort(sorted_gauges.begin(), sorted_gauges.end(),
-                  [](const Stats::GaugeSharedPtr& gauge1, const Stats::GaugeSharedPtr& gauge2) {
-                    return gauge1->name() < gauge2->name();
+                  [](const Stats::SimpleGauge& gauge1, const Stats::SimpleGauge& gauge2) {
+                    return gauge1.name() < gauge2.name();
                   });
 
-        for (const Stats::GaugeSharedPtr& gauge : sorted_gauges) {
+        for (const Stats::SimpleGauge& gauge : sorted_gauges) {
           auto& metric = *host_status.add_stats();
-          metric.set_name(gauge->name());
-          metric.set_value(gauge->value());
+          metric.set_name(std::string(gauge.name()));
+          metric.set_value(gauge.value());
           metric.set_type(envoy::admin::v2alpha::SimpleMetric::GAUGE);
         }
 
@@ -456,12 +450,12 @@ void AdminImpl::writeClustersAsText(Buffer::Instance& response) {
     for (auto& host_set : cluster.second.get().prioritySet().hostSetsPerPriority()) {
       for (auto& host : host_set->hosts()) {
         std::map<std::string, uint64_t> all_stats;
-        for (const Stats::CounterSharedPtr& counter : host->counters()) {
-          all_stats[counter->name()] = counter->value();
+        for (const Stats::SimpleCounter& counter : host->counters()) {
+          all_stats[std::string(counter.name())] = counter.value();
         }
 
-        for (const Stats::GaugeSharedPtr& gauge : host->gauges()) {
-          all_stats[gauge->name()] = gauge->value();
+        for (const Stats::SimpleGauge& gauge : host->gauges()) {
+          all_stats[std::string(gauge.name())] = gauge.value();
         }
 
         for (const auto& stat : all_stats) {

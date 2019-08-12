@@ -328,6 +328,19 @@ bool TestUtility::gaugesZeroed(const std::vector<Stats::GaugeSharedPtr>& gauges)
   return true;
 }
 
+// static
+bool TestUtility::gaugesZeroed(const std::vector<std::reference_wrapper<const Stats::SimpleGauge>>& gauges) {
+  // Returns true if all gauges are 0 except the circuit_breaker remaining resource
+  // gauges which default to the resource max.
+  std::regex omitted(".*circuit_breakers\\..*\\.remaining.*");
+  for (const Stats::SimpleGauge& gauge : gauges) {
+    if (!std::regex_match(std::string(gauge.name()), omitted) && gauge.value() != 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void ConditionalInitializer::setReady() {
   Thread::LockGuard lock(mutex_);
   EXPECT_FALSE(ready_);

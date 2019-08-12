@@ -77,7 +77,7 @@ public:
   /**
    * @return host specific counters.
    */
-  virtual std::vector<Stats::CounterSharedPtr> counters() const PURE;
+  virtual std::vector<std::reference_wrapper<const Stats::SimpleCounter>> counters() const PURE;
 
   /**
    * Create a connection for this host.
@@ -105,7 +105,7 @@ public:
   /**
    * @return host specific gauges.
    */
-  virtual std::vector<Stats::GaugeSharedPtr> gauges() const PURE;
+  virtual std::vector<std::reference_wrapper<const Stats::SimpleGauge>> gauges() const PURE;
 
   /**
    * Atomically clear a health flag for a host. Flags are specified in HealthFlags.

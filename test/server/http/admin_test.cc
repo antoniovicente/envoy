@@ -1077,14 +1077,24 @@ TEST_P(AdminInstanceTest, ClustersJson) {
   ON_CALL(*host, hostname()).WillByDefault(ReturnRef(hostname));
 
   // Add stats in random order and validate that they come in order.
-  Stats::IsolatedStoreImpl store;
-  store.counter("test_counter").add(10);
-  store.counter("rest_counter").add(10);
-  store.counter("arest_counter").add(5);
-  store.gauge("test_gauge", Stats::Gauge::ImportMode::Accumulate).set(11);
-  store.gauge("atest_gauge", Stats::Gauge::ImportMode::Accumulate).set(10);
-  ON_CALL(*host, gauges()).WillByDefault(Invoke([&store]() { return store.gauges(); }));
-  ON_CALL(*host, counters()).WillByDefault(Invoke([&store]() { return store.counters(); }));
+  Stats::SimpleCounter test_counter("test_counter");
+  test_counter.add(10);
+  Stats::SimpleCounter rest_counter("rest_counter");
+  rest_counter.add(10);
+  Stats::SimpleCounter arest_counter("arest_counter");
+  arest_counter.add(5);
+  std::vector<std::reference_wrapper<const Stats::SimpleCounter>> counters = {
+    test_counter, rest_counter, arest_counter
+  };
+  Stats::SimpleGauge test_gauge("test_gauge");
+  test_gauge.set(11);
+  Stats::SimpleGauge atest_gauge("atest_gauge");
+  atest_gauge.set(10);
+  std::vector<std::reference_wrapper<const Stats::SimpleCounter>> gauges = {
+    test_gauge, atest_gauge
+  };
+  ON_CALL(*host, counters()).WillByDefault(Invoke([&counters]() { return counters; }));
+  ON_CALL(*host, gauges()).WillByDefault(Invoke([&gauges]() { return gauges; }));
 
   ON_CALL(*host, healthFlagGet(Upstream::Host::HealthFlag::FAILED_ACTIVE_HC))
       .WillByDefault(Return(true));

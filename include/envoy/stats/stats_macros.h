@@ -37,6 +37,9 @@ namespace Envoy {
 #define GENERATE_GAUGE_STRUCT(NAME, MODE) Envoy::Stats::Gauge& NAME##_;
 #define GENERATE_HISTOGRAM_STRUCT(NAME) Envoy::Stats::Histogram& NAME##_;
 
+#define INLINE_SIMPLE_COUNTER_STRUCT(NAME) Envoy::Stats::SimpleCounter NAME##_{#NAME};
+#define INLINE_SIMPLE_GAUGE_STRUCT(NAME, MODE) Envoy::Stats::SimpleGauge NAME##_{#NAME};
+
 #define FINISH_STAT_DECL_(X) + std::string(#X)),
 #define FINISH_STAT_DECL_MODE_(X, MODE) + std::string(#X), Envoy::Stats::Gauge::ImportMode::MODE),
 

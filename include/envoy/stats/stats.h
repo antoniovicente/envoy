@@ -17,6 +17,54 @@ namespace Stats {
 class Allocator;
 struct Tag;
 
+class SimpleCounter {
+ public:
+  SimpleCounter(absl::string_view name) : name_(name) {}
+
+  absl::string_view name() const { return name_; }
+  uint64_t value() const { return value_; }
+
+  void add(uint64_t amount) {
+    value_ += amount;
+    pending_increment_ += amount;
+  }
+  void inc() { add(1); }
+  void reset() { value_ = 0; }
+  uint64_t latch() {
+    return pending_increment_.exchange(0);
+  }
+
+ private:
+  absl::string_view name_;
+  std::atomic<uint64_t> value_{0};
+  std::atomic<uint64_t> pending_increment_{0};
+};
+
+class SimpleGauge {
+ public:
+  SimpleGauge(absl::string_view name) : name_(name) {}
+
+  absl::string_view name() const { return name_; }
+  uint64_t value() const { return value_; }
+
+  void add(uint64_t amount) {
+    value_ += amount;
+  }
+  void dec() { sub(1); }
+  void inc() { add(1); }
+  void set(uint64_t value) {
+    value_ = value;
+  }
+  void sub(uint64_t amount) {
+    ASSERT(value_ >= amount);
+    value_ -= amount;
+  }
+
+ private:
+  absl::string_view name_;
+  std::atomic<uint64_t> value_{0};
+};
+
 /**
  * General interface for all stats objects.
  */
