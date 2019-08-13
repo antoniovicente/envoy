@@ -1090,7 +1090,7 @@ TEST_P(AdminInstanceTest, ClustersJson) {
   test_gauge.set(11);
   Stats::SimpleGauge atest_gauge("atest_gauge");
   atest_gauge.set(10);
-  std::vector<std::reference_wrapper<const Stats::SimpleCounter>> gauges = {
+  std::vector<std::reference_wrapper<const Stats::SimpleGauge>> gauges = {
     test_gauge, atest_gauge
   };
   ON_CALL(*host, counters()).WillByDefault(Invoke([&counters]() { return counters; }));

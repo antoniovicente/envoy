@@ -43,9 +43,6 @@
 #include "common/upstream/outlier_detection_impl.h"
 #include "common/upstream/resource_manager_impl.h"
 
-#include "common/stats/symbol_table_impl.h"
-#include "common/stats/fake_symbol_table_impl.h"
-
 #include "absl/synchronization/mutex.h"
 
 namespace Envoy {
