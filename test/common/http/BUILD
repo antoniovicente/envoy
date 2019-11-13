@@ -69,6 +69,7 @@ envoy_cc_fuzz_test(
     name = "codec_impl_fuzz_test",
     srcs = ["codec_impl_fuzz_test.cc"],
     corpus = "codec_impl_corpus",
+    tcmalloc_dep = True,
     deps = [
         ":codec_impl_fuzz_proto_cc_proto",
         "//source/common/http:header_map_lib",

@@ -2,6 +2,7 @@
 # Envoy test targets. This includes both test library and test binary targets.
 load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 load(":envoy_binary.bzl", "envoy_cc_binary")
+load(":envoy_library.bzl", "tcmalloc_external_deps")
 load(
     ":envoy_internal.bzl",
     "envoy_copts",
@@ -20,12 +21,16 @@ def _envoy_cc_test_infrastructure_library(
         hdrs = [],
         data = [],
         external_deps = [],
+        tcmalloc_dep = None,
         deps = [],
         repository = "",
         tags = [],
         include_prefix = None,
         copts = [],
         **kargs):
+    if tcmalloc_dep:
+        deps += tcmalloc_external_deps(repository)
+
     native.cc_library(
         name = name,
         srcs = srcs,
@@ -148,6 +153,7 @@ def envoy_cc_test(
         # List of pairs (Bazel shell script target, shell script args)
         repository = "",
         external_deps = [],
+        tcmalloc_dep = None,
         deps = [],
         tags = [],
         args = [],
@@ -165,6 +171,7 @@ def envoy_cc_test(
         srcs = srcs,
         data = data,
         external_deps = external_deps,
+        tcmalloc_dep = tcmalloc_dep,
         deps = deps + [repository + "//test/test_common:printers_includes"],
         repository = repository,
         tags = coverage_tags,
@@ -201,6 +208,7 @@ def envoy_cc_test_library(
         hdrs = [],
         data = [],
         external_deps = [],
+        tcmalloc_dep = None,
         deps = [],
         repository = "",
         tags = [],
@@ -216,6 +224,7 @@ def envoy_cc_test_library(
         hdrs,
         data,
         external_deps,
+        tcmalloc_dep,
         deps,
         repository,
         tags,
