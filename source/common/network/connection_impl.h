@@ -80,7 +80,9 @@ public:
   State state() const override;
   void write(Buffer::Instance& data, bool end_stream) override;
   void setBufferLimits(uint32_t limit) override;
-  uint32_t bufferLimit() const override { return read_buffer_limit_; }
+  uint32_t bufferLimit() const override {
+    return read_buffer_.highWatermark() > 0 ? read_buffer_.highWatermark() + 1 : 0;
+  }
   bool localAddressRestored() const override { return socket_->localAddressRestored(); }
   bool aboveHighWatermark() const override { return above_high_watermark_; }
   const ConnectionSocket::OptionsSharedPtr& socketOptions() const override {
@@ -107,15 +109,13 @@ public:
   Connection& connection() override { return *this; }
   void raiseEvent(ConnectionEvent event) override;
   // Should the read buffer be drained?
-  bool shouldDrainReadBuffer() override {
-    return read_buffer_limit_ > 0 && read_buffer_.length() >= read_buffer_limit_;
-  }
+  bool shouldDrainReadBuffer() override { return should_drain_read_buffer_; }
   // Mark read buffer ready to read in the event loop. This is used when yielding following
   // shouldDrainReadBuffer().
   // TODO(htuch): While this is the basis for also yielding to other connections to provide some
   // fair sharing of CPU resources, the underlying event loop does not make any fairness guarantees.
   // Reconsider how to make fairness happen.
-  void setReadBufferReady() override { file_event_->activate(Event::FileReadyType::Read); }
+  void setReadBufferReady() override;
   void flushWriteBuffer() override;
 
   // Obtain global next connection ID. This should only be used in tests.
@@ -127,21 +127,24 @@ protected:
 
   void closeSocket(ConnectionEvent close_type);
 
-  void onLowWatermark();
-  void onHighWatermark();
+  void onWriteBufferLowWatermark();
+  void onWriteBufferHighWatermark();
+
+  void onReadBufferLowWatermark();
+  void onReadBufferHighWatermark();
 
   TransportSocketPtr transport_socket_;
   ConnectionSocketPtr socket_;
   StreamInfo::StreamInfo& stream_info_;
   FilterManagerImpl filter_manager_;
 
-  Buffer::OwnedImpl read_buffer_;
+  Buffer::WatermarkBuffer read_buffer_;
+  bool should_drain_read_buffer_{false};
   // This must be a WatermarkBuffer, but as it is created by a factory the ConnectionImpl only has
   // a generic pointer.
   // It MUST be defined after the filter_manager_ as some filters may have callbacks that
   // write_buffer_ invokes during its clean up.
   Buffer::InstancePtr write_buffer_;
-  uint32_t read_buffer_limit_ = 0;
   bool connecting_{false};
   ConnectionEvent immediate_error_event_{ConnectionEvent::Connected};
   bool bind_error_{false};

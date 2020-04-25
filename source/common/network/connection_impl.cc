@@ -48,9 +48,11 @@ ConnectionImpl::ConnectionImpl(Event::Dispatcher& dispatcher, ConnectionSocketPt
     : ConnectionImplBase(dispatcher, next_global_id_++),
       transport_socket_(std::move(transport_socket)), socket_(std::move(socket)),
       stream_info_(stream_info), filter_manager_(*this),
-      write_buffer_(
-          dispatcher.getWatermarkFactory().create([this]() -> void { this->onLowWatermark(); },
-                                                  [this]() -> void { this->onHighWatermark(); })),
+      read_buffer_([this]() -> void { this->onReadBufferLowWatermark(); },
+                   [this]() -> void { this->onReadBufferHighWatermark(); }),
+      write_buffer_(dispatcher.getWatermarkFactory().create(
+          [this]() -> void { this->onWriteBufferLowWatermark(); },
+          [this]() -> void { this->onWriteBufferHighWatermark(); })),
       read_enabled_(true), above_high_watermark_(false), detect_early_close_(true),
       enable_half_close_(false), read_end_stream_raised_(false), read_end_stream_(false),
       write_end_stream_(false), current_write_end_stream_(false), dispatch_buffered_data_(false) {
@@ -446,7 +448,11 @@ void ConnectionImpl::write(Buffer::Instance& data, bool end_stream, bool through
 }
 
 void ConnectionImpl::setBufferLimits(uint32_t limit) {
-  read_buffer_limit_ = limit;
+  // Do a weird adjustment to high watermark to preserve the old read limit behavior which kicks in
+  // at exactly at the limit instead of the usual high-watermark behavior that kicks in buffered
+  // bytes are above the limit.
+  // TODO(antoniovicente) Clean this up before sending PR out for review.
+  read_buffer_.setWatermarks(limit > 2 ? limit - 1 : 0);
 
   // Due to the fact that writes to the connection and flushing data from the connection are done
   // asynchronously, we have the option of either setting the watermarks aggressively, and regularly
@@ -471,7 +477,7 @@ void ConnectionImpl::setBufferLimits(uint32_t limit) {
   }
 }
 
-void ConnectionImpl::onLowWatermark() {
+void ConnectionImpl::onWriteBufferLowWatermark() {
   ENVOY_CONN_LOG(debug, "onBelowWriteBufferLowWatermark", *this);
   ASSERT(above_high_watermark_);
   above_high_watermark_ = false;
@@ -480,13 +486,26 @@ void ConnectionImpl::onLowWatermark() {
   }
 }
 
-void ConnectionImpl::onHighWatermark() {
+void ConnectionImpl::onWriteBufferHighWatermark() {
   ENVOY_CONN_LOG(debug, "onAboveWriteBufferHighWatermark", *this);
   ASSERT(!above_high_watermark_);
   above_high_watermark_ = true;
   for (ConnectionCallbacks* callback : callbacks_) {
     callback->onAboveWriteBufferHighWatermark();
   }
+}
+
+void ConnectionImpl::onReadBufferLowWatermark() {
+  ASSERT(should_drain_read_buffer_);
+  should_drain_read_buffer_ = false;
+  if (ioHandle().isOpen()) {
+    file_event_->activate(Event::FileReadyType::Read);
+  }
+}
+
+void ConnectionImpl::onReadBufferHighWatermark() {
+  ASSERT(!should_drain_read_buffer_);
+  should_drain_read_buffer_ = true;
 }
 
 void ConnectionImpl::onFileEvent(uint32_t events) {
@@ -531,6 +550,13 @@ void ConnectionImpl::onReadReady() {
   ENVOY_CONN_LOG(trace, "read ready", *this);
 
   ASSERT(!connecting_);
+
+  if (shouldDrainReadBuffer()) {
+    // Skip read from socket if read buffer is above high watermark.
+    onRead(read_buffer_.length());
+    dispatch_buffered_data_ = false;
+    return;
+  }
 
   IoResult result = transport_socket_->doRead(read_buffer_);
   uint64_t new_buffer_size = read_buffer_.length();
@@ -672,6 +698,12 @@ bool ConnectionImpl::bothSidesHalfClosed() {
 
 absl::string_view ConnectionImpl::transportFailureReason() const {
   return transport_socket_->failureReason();
+}
+
+void ConnectionImpl::setReadBufferReady() {
+  if (!should_drain_read_buffer_) {
+    file_event_->activate(Event::FileReadyType::Read);
+  }
 }
 
 void ConnectionImpl::flushWriteBuffer() {

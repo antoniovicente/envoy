@@ -111,6 +111,8 @@ Network::IoResult SslSocket::doRead(Buffer::Instance& read_buffer) {
   PostIoAction action = PostIoAction::KeepOpen;
   uint64_t bytes_read = 0;
   while (keep_reading) {
+    ASSERT(!callbacks_->shouldDrainReadBuffer());
+
     // We use 2 slices here so that we can use the remainder of an existing buffer chain element
     // if there is extra space. 16K read is arbitrary and can be tuned later.
     Buffer::RawSlice slices[2];
