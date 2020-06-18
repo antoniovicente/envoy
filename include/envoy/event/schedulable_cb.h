@@ -16,10 +16,18 @@ public:
   virtual ~SchedulableCallback() = default;
 
   /**
-   * Schedule the callback so it runs in the current iteration of the event loop.
+   * Schedule the callback.
+   * @param type specifies wherever to run as part of the current or next event loop iteration.
    */
-  virtual void scheduleCallback() PURE;
-
+  enum class ScheduleType {
+    // Schedule the callback so it executes as part of the current event loop iteration. Callback
+    // will execute before polling for fd events.
+    CurrentLoopIteration,
+    // Schedule the callback so it executes as part of the next event loop iteration. Callback will
+    // execute after polling for and processing fd events.
+    NextLoopIteration,
+  };
+  virtual void scheduleCallback(ScheduleType type) PURE;
   /**
    * Cancel pending execution of the callback.
    */

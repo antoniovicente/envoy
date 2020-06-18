@@ -20,7 +20,17 @@ SchedulableCallbackImpl::SchedulableCallbackImpl(Libevent::BasePtr& libevent,
       this);
 }
 
-void SchedulableCallbackImpl::scheduleCallback() { event_active(&raw_event_, EV_TIMEOUT, 0); }
+void SchedulableCallbackImpl::scheduleCallback(ScheduleType type) {
+  switch (type) {
+  case ScheduleType::CurrentLoopIteration:
+    event_active(&raw_event_, EV_TIMEOUT, 0);
+    return;
+  case ScheduleType::NextLoopIteration:
+    const timeval zero_tv{};
+    event_add(&raw_event_, &zero_tv);
+    return;
+  }
+}
 
 void SchedulableCallbackImpl::cancel() { event_del(&raw_event_); }
 
