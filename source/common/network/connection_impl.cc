@@ -323,23 +323,6 @@ void ConnectionImpl::readDisable(bool disable) {
   // full close.
   if (disable) {
     ++read_disable_count_;
-
-    if (state() != State::Open || file_event_ == nullptr) {
-      // If readDisable is called on a closed connection, do not crash.
-      return;
-    }
-    if (read_disable_count_ > 1) {
-      // The socket has already been read disabled.
-      return;
-    }
-
-    // If half-close semantics are enabled, we never want early close notifications; we
-    // always want to read all available data, even if the other side has closed.
-    if (detect_early_close_ && !enable_half_close_) {
-      file_event_->setEnabled(Event::FileReadyType::Write | Event::FileReadyType::Closed);
-    } else {
-      file_event_->setEnabled(Event::FileReadyType::Write);
-    }
   } else {
     ASSERT(read_disable_count_ != 0);
     --read_disable_count_;
@@ -348,19 +331,14 @@ void ConnectionImpl::readDisable(bool disable) {
       return;
     }
 
-    if (read_disable_count_ == 0) {
-      // We never ask for both early close and read at the same time. If we are reading, we want to
-      // consume all available data.
-      file_event_->setEnabled(Event::FileReadyType::Read | Event::FileReadyType::Write);
-    }
-
-    if (consumerWantsToRead() && read_buffer_.length() > 0) {
-      // If the connection has data buffered there's no guarantee there's also data in the kernel
-      // which will kick off the filter chain. Alternately if the read buffer has data the fd could
-      // be read disabled. To handle these cases, fake an event to make sure the buffered data gets
-      // processed regardless and ensure that we dispatch it via onRead.
-      dispatch_buffered_data_ = true;
-      setReadBufferReady();
+    if (consumerWantsToRead()) {
+      if (read_buffer_.length() > 0) {
+        // If the connection has data buffered there's no guarantee there's also data in the kernel
+        // which will kick off the filter chain. Alternately if the read buffer has data the fd could
+        // be read disabled. To handle these cases, fake an event to make sure the buffered data gets
+        // processed regardless and ensure that we dispatch it via onRead.
+        dispatch_buffered_data_ = true;
+      }
     }
   }
 }
