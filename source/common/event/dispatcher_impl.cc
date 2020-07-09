@@ -134,7 +134,14 @@ Network::DnsResolverSharedPtr DispatcherImpl::createDnsResolver(
 FileEventPtr DispatcherImpl::createFileEvent(os_fd_t fd, FileReadyCb cb, FileTriggerType trigger,
                                              uint32_t events) {
   ASSERT(isThreadSafe());
-  return FileEventPtr{new FileEventImpl(*this, fd, cb, trigger, events)};
+  return FileEventPtr{new FileEventImpl(
+      *this, fd,
+      [this, cb](uint32_t events) {
+        auto* self = this;
+        cb(events);
+        self->clearDeferredDeleteList();
+      },
+      trigger, events)};
 }
 
 Filesystem::WatcherPtr DispatcherImpl::createFilesystemWatcher() {
@@ -162,11 +169,21 @@ TimerPtr DispatcherImpl::createTimer(TimerCb cb) {
 
 Event::SchedulableCallbackPtr DispatcherImpl::createSchedulableCallback(std::function<void()> cb) {
   ASSERT(isThreadSafe());
-  return base_scheduler_.createSchedulableCallback(cb);
+  return base_scheduler_.createSchedulableCallback([this, cb]() {
+    auto* self = this;
+    cb();
+    self->clearDeferredDeleteList();
+  });
 }
 
 TimerPtr DispatcherImpl::createTimerInternal(TimerCb cb) {
-  return scheduler_->createTimer(cb, *this);
+  return scheduler_->createTimer(
+      [this, cb]() {
+        auto* self = this;
+        cb();
+        self->clearDeferredDeleteList();
+      },
+      *this);
 }
 
 void DispatcherImpl::deferredDelete(DeferredDeletablePtr&& to_delete) {

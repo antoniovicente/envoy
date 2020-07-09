@@ -93,12 +93,18 @@ void FakeStream::encodeHeaders(const Http::HeaderMap& headers, bool end_stream) 
   }
 
   parent_.connection().dispatcher().post([this, headers_copy, end_stream]() -> void {
+    if (saw_reset_) {
+      return;
+    }
     encoder_.encodeHeaders(*headers_copy, end_stream);
   });
 }
 
 void FakeStream::encodeData(absl::string_view data, bool end_stream) {
   parent_.connection().dispatcher().post([this, data, end_stream]() -> void {
+    if (saw_reset_) {
+      return;
+    }
     Buffer::OwnedImpl fake_data(data.data(), data.size());
     encoder_.encodeData(fake_data, end_stream);
   });
@@ -106,6 +112,9 @@ void FakeStream::encodeData(absl::string_view data, bool end_stream) {
 
 void FakeStream::encodeData(uint64_t size, bool end_stream) {
   parent_.connection().dispatcher().post([this, size, end_stream]() -> void {
+    if (saw_reset_) {
+      return;
+    }
     Buffer::OwnedImpl data(std::string(size, 'a'));
     encoder_.encodeData(data, end_stream);
   });
@@ -113,15 +122,23 @@ void FakeStream::encodeData(uint64_t size, bool end_stream) {
 
 void FakeStream::encodeData(Buffer::Instance& data, bool end_stream) {
   std::shared_ptr<Buffer::Instance> data_copy = std::make_shared<Buffer::OwnedImpl>(data);
-  parent_.connection().dispatcher().post(
-      [this, data_copy, end_stream]() -> void { encoder_.encodeData(*data_copy, end_stream); });
+  parent_.connection().dispatcher().post([this, data_copy, end_stream]() -> void {
+    if (saw_reset_) {
+      return;
+    }
+    encoder_.encodeData(*data_copy, end_stream);
+  });
 }
 
 void FakeStream::encodeTrailers(const Http::HeaderMap& trailers) {
   std::shared_ptr<Http::ResponseTrailerMap> trailers_copy(
       Http::createHeaderMap<Http::ResponseTrailerMapImpl>(trailers));
-  parent_.connection().dispatcher().post(
-      [this, trailers_copy]() -> void { encoder_.encodeTrailers(*trailers_copy); });
+  parent_.connection().dispatcher().post([this, trailers_copy]() -> void {
+    if (saw_reset_) {
+      return;
+    }
+    encoder_.encodeTrailers(*trailers_copy);
+  });
 }
 
 void FakeStream::encodeResetStream() {
