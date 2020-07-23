@@ -431,12 +431,13 @@ void ConnectionImpl::write(Buffer::Instance& data, bool end_stream, bool through
     // ever changed, read the comment in SslSocket::doWrite() VERY carefully. That code assumes that
     // we never change existing write_buffer_ chain elements between calls to SSL_write(). That code
     // might need to change if we ever copy here.
+    bool write_buffer_was_empty = (write_buffer_->length() == 0);
     write_buffer_->move(data);
 
     // Activating a write event before the socket is connected has the side-effect of tricking
     // doWriteReady into thinking the socket is connected. On macOS, the underlying write may fail
     // with a connection error if a call to write(2) occurs before the connection is completed.
-    if (!connecting_) {
+    if (!connecting_ && write_buffer_was_empty) {
       ASSERT(file_event_ != nullptr, "ConnectionImpl file event was unexpectedly reset");
       file_event_->activate(Event::FileReadyType::Write);
     }
