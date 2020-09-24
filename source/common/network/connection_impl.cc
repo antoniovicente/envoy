@@ -348,13 +348,15 @@ void ConnectionImpl::readDisable(bool disable) {
       file_event_->setEnabled(Event::FileReadyType::Read | Event::FileReadyType::Write);
     }
 
-    if (consumerWantsToRead() && read_buffer_.length() > 0) {
-      // If the connection has data buffered there's no guarantee there's also data in the kernel
-      // which will kick off the filter chain. Alternately if the read buffer has data the fd could
-      // be read disabled. To handle these cases, fake an event to make sure the buffered data gets
-      // processed regardless and ensure that we dispatch it via onRead.
-      dispatch_buffered_data_ = true;
+    if (consumerWantsToRead()) {
+      // Schedule a synthetic fd readable event in case that additional data is available in
+      // transport socket buffers, but the kernel buffers are empty. For example,
+      // https://github.com/envoyproxy/envoy/issues/12304 .
       setReadBufferReady();
+      if (read_buffer_.length() > 0) {
+        // Also set dispatch_buffered_data_ if not empty.
+        dispatch_buffered_data_ = true;
+      }
     }
   }
 }
