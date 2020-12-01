@@ -13,6 +13,7 @@
 #include "test/integration/autonomous_upstream.h"
 #include "test/integration/filters/test_socket_interface.h"
 #include "test/integration/http_integration.h"
+#include "test/integration/tracked_watermark_buffer.h"
 #include "test/integration/utility.h"
 #include "test/mocks/http/mocks.h"
 #include "test/test_common/network_utility.h"
@@ -312,6 +313,9 @@ TEST_P(Http2FloodMitigationTest, 404) {
 
 // Verify that the server can detect flood of response DATA frames
 TEST_P(Http2FloodMitigationTest, Data) {
+  auto buffer_factory = std::make_shared<Buffer::TrackedWatermarkBufferFactory>();
+  setServerBufferFactory(buffer_factory);
+
   // Set large buffer limits so the test is not affected by the flow control.
   config_helper_.setBufferLimits(1024 * 1024 * 1024, 1024 * 1024 * 1024);
   autonomous_upstream_ = true;
@@ -341,6 +345,17 @@ TEST_P(Http2FloodMitigationTest, Data) {
   ASSERT_EQ(0, test_server_->counter("cluster.cluster_0.upstream_cx_destroy")->value());
   // Verify that the flood check was triggered
   EXPECT_EQ(1, test_server_->counter("http2.outbound_flood")->value());
+
+  // Expect at least 1000 1 byte data frames in the output buffer. Each data frame comes with a
+  // 9-byte frame header, so 10 bytes per data frame, 10000 bytes total.
+  EXPECT_EQ(2, buffer_factory->numBuffersCreated(Buffer::BufferType::Output));
+  EXPECT_LE(10000, buffer_factory->maxBufferSize(Buffer::BufferType::Output));
+  EXPECT_LE(10000, buffer_factory->sumMaxBufferSizes(Buffer::BufferType::Output));
+
+  // Read buffer allocations are also captured.
+  EXPECT_EQ(2, buffer_factory->numBuffersCreated(Buffer::BufferType::Read));
+  EXPECT_LT(0, buffer_factory->maxBufferSize(Buffer::BufferType::Read));
+  EXPECT_LT(0, buffer_factory->sumMaxBufferSizes(Buffer::BufferType::Read));
 }
 
 // Verify that the server can detect flood triggered by a DATA frame from a decoder filter call

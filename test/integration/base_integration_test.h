@@ -367,6 +367,11 @@ public:
 protected:
   bool initialized() const { return initialized_; }
 
+  void setServerBufferFactory(Buffer::WatermarkFactorySharedPtr proxy_buffer_factory) {
+    ASSERT(!test_server_, "Proxy buffer factory must be set before test server creation");
+    proxy_buffer_factory_ = proxy_buffer_factory;
+  }
+
   std::unique_ptr<Stats::Scope> upstream_stats_store_;
 
   // Make sure the test server will be torn down after any fake client.
@@ -458,6 +463,9 @@ private:
   FakeHttpConnection::Type upstream_protocol_{FakeHttpConnection::Type::HTTP1};
   // True if initialized() has been called.
   bool initialized_{};
+  // Optional factory that the proxy-under-test should use to create watermark buffers. If nullptr,
+  // the proxy uses the default watermark buffer factory to create buffers.
+  Buffer::WatermarkFactorySharedPtr proxy_buffer_factory_;
 };
 
 } // namespace Envoy
