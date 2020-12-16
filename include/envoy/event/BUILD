@@ -21,7 +21,6 @@ envoy_cc_library(
         ":file_event_interface",
         ":schedulable_cb_interface",
         ":signal_interface",
-        "//include/envoy/common:scope_tracker_interface",
         "//include/envoy/event:scheduler_interface",
         "//include/envoy/filesystem:watcher_interface",
         "//include/envoy/network:connection_handler_interface",
@@ -72,6 +71,8 @@ envoy_cc_library(
     hdrs = ["scheduler.h"],
     deps = [
         ":timer_interface",
+        "//include/envoy/common:scope_tracker_interface",
+        "//include/envoy/common:time_interface",
     ],
 )
 

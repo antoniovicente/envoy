@@ -64,6 +64,15 @@ public:
 
   // Scheduler
   TimerPtr createTimer(const TimerCb& cb) override;
+  const ScopeTrackedObject* setTrackedObject(const ScopeTrackedObject* object) override {
+    return dispatcher_.setTrackedObject(object);
+  }
+  bool isThreadSafe() const override {
+    return dispatcher_.isThreadSafe();
+  }
+  MonotonicTime approximateMonotonicTime() const override{ return dispatcher_.approximateMonotonicTime(); }
+
+  // CallbackScheduler
   SchedulableCallbackPtr createSchedulableCallback(const std::function<void()>& cb) override;
 
   /**

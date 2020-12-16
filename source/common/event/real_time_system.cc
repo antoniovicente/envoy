@@ -13,6 +13,9 @@ class RealScheduler : public Scheduler {
 public:
   RealScheduler(Scheduler& base_scheduler) : base_scheduler_(base_scheduler) {}
   TimerPtr createTimer(const TimerCb& cb) override { return base_scheduler_.createTimer(cb); };
+  const ScopeTrackedObject* setTrackedObject(const ScopeTrackedObject* object) override { return base_scheduler_.setTrackedObject(object); }
+  bool isThreadSafe() const override { return base_scheduler_.isThreadSafe(); }
+  MonotonicTime approximateMonotonicTime() const override { return base_scheduler_.approximateMonotonicTime(); }
 
 private:
   Scheduler& base_scheduler_;

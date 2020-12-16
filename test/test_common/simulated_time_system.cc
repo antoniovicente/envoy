@@ -53,8 +53,8 @@ private:
 // the expected thread.
 class SimulatedTimeSystemHelper::SimulatedScheduler : public Scheduler {
 public:
-  SimulatedScheduler(SimulatedTimeSystemHelper& time_system, CallbackScheduler& cb_scheduler)
-      : time_system_(time_system), cb_scheduler_(cb_scheduler),
+  SimulatedScheduler(SimulatedTimeSystemHelper& time_system, Scheduler& base_scheduler, CallbackScheduler& cb_scheduler)
+      : time_system_(time_system), base_scheduler_(base_scheduler), cb_scheduler_(cb_scheduler),
         thread_factory_(Thread::threadFactoryForTest()),
         run_alarms_cb_(cb_scheduler.createSchedulableCallback([this] { runReadyAlarms(); })),
         monotonic_time_(time_system_.monotonicTime()), system_time_(time_system_.systemTime()) {
@@ -64,6 +64,9 @@ public:
 
   // From Scheduler.
   TimerPtr createTimer(const TimerCb& cb) override;
+  const ScopeTrackedObject* setTrackedObject(const ScopeTrackedObject* object) override { return base_scheduler_.setTrackedObject(object); }
+  bool isThreadSafe() const override { return base_scheduler_.isThreadSafe(); }
+  MonotonicTime approximateMonotonicTime() const override { return base_scheduler_.approximateMonotonicTime(); }
 
   // Implementation of SimulatedTimeSystemHelper::Alarm methods.
   bool isEnabled(Alarm& alarm) ABSL_LOCKS_EXCLUDED(mutex_);
@@ -196,6 +199,7 @@ private:
   };
 
   SimulatedTimeSystemHelper& time_system_;
+  Scheduler& base_scheduler_;
   CallbackScheduler& cb_scheduler_;
   Thread::ThreadFactory& thread_factory_;
   SchedulableCallbackPtr run_alarms_cb_;
@@ -406,9 +410,9 @@ void SimulatedTimeSystemHelper::waitForNoPendingLockHeld() const
       &pending_updates_));
 }
 
-SchedulerPtr SimulatedTimeSystemHelper::createScheduler(Scheduler& /*base_scheduler*/,
+SchedulerPtr SimulatedTimeSystemHelper::createScheduler(Scheduler& base_scheduler,
                                                         CallbackScheduler& cb_scheduler) {
-  return std::make_unique<SimulatedScheduler>(*this, cb_scheduler);
+  return std::make_unique<SimulatedScheduler>(*this, base_scheduler, cb_scheduler);
 }
 
 void SimulatedTimeSystemHelper::setMonotonicTimeLockHeld(const MonotonicTime& monotonic_time) {
