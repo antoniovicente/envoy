@@ -414,6 +414,7 @@ envoy_cc_library(
         ":worker_lib",
         "//include/envoy/event:dispatcher_interface",
         "//include/envoy/event:signal_interface",
+        "//include/envoy/event:time_system_interface",
         "//include/envoy/event:timer_interface",
         "//include/envoy/network:dns_interface",
         "//include/envoy/server:bootstrap_extension_config_interface",

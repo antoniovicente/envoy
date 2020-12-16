@@ -2,7 +2,7 @@
 
 #include "envoy/common/time.h"
 #include "envoy/event/dispatcher.h"
-#include "envoy/event/timer.h"
+#include "envoy/event/time_system.h"
 
 #include "common/common/assert.h"
 #include "common/common/thread.h"

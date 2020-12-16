@@ -69,10 +69,28 @@ envoy_cc_library(
 )
 
 envoy_cc_library(
+    name = "scheduler_interface",
+    hdrs = ["scheduler.h"],
+    deps = [
+        ":timer_interface",
+    ],
+)
+
+envoy_cc_library(
     name = "timer_interface",
     hdrs = ["timer.h"],
     deps = [
         ":schedulable_cb_interface",
+        "//include/envoy/common:time_interface",
+    ],
+)
+
+envoy_cc_library(
+    name = "time_system_interface",
+    hdrs = ["time_system.h"],
+    deps = [
+        ":schedulable_cb_interface",
+        ":scheduler_interface",
         "//include/envoy/common:time_interface",
     ],
 )

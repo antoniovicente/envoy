@@ -9,6 +9,7 @@
 #include <string>
 
 #include "envoy/config/bootstrap/v3/bootstrap.pb.h"
+#include "envoy/event/time_system.h"
 #include "envoy/event/timer.h"
 #include "envoy/server/bootstrap_extension_config.h"
 #include "envoy/server/configuration.h"

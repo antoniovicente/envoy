@@ -1,6 +1,6 @@
 #pragma once
 
-#include "envoy/event/timer.h"
+#include "envoy/event/time_system.h"
 
 #include "common/common/utility.h"
 

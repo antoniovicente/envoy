@@ -4,6 +4,7 @@
 
 #include "envoy/event/dispatcher.h"
 #include "envoy/event/schedulable_cb.h"
+#include "envoy/event/scheduler.h"
 #include "envoy/event/timer.h"
 
 #include "common/event/libevent.h"

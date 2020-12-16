@@ -4,7 +4,7 @@
 #include <string>
 
 #include "envoy/api/api.h"
-#include "envoy/event/timer.h"
+#include "envoy/event/time_system.h"
 #include "envoy/filesystem/filesystem.h"
 #include "envoy/network/socket.h"
 #include "envoy/thread/thread.h"

@@ -37,6 +37,7 @@ envoy_cc_library(
         "//include/envoy/common:scope_tracker_interface",
         "//include/envoy/common:time_interface",
         "//include/envoy/event:signal_interface",
+        "//include/envoy/event:time_system_interface",
         "//include/envoy/network:listen_socket_interface",
         "//include/envoy/network:listener_interface",
         "//source/common/common:assert_lib",
@@ -98,9 +99,9 @@ envoy_cc_library(
     deps = [
         ":event_impl_base_lib",
         ":timer_lib",
+        "//include/envoy/event:time_system_interface",
         "//include/envoy/event:timer_interface",
         "//source/common/common:utility_lib",
-        "//source/common/event:dispatcher_includes",
     ],
 )
 
@@ -119,6 +120,7 @@ envoy_cc_library(
         "//include/envoy/event:deferred_deletable",
         "//include/envoy/event:dispatcher_interface",
         "//include/envoy/event:file_event_interface",
+        "//include/envoy/event:time_system_interface",
         "//include/envoy/network:connection_handler_interface",
         "//source/common/common:minimal_logger_lib",
         "//source/common/common:thread_lib",
@@ -154,6 +156,7 @@ envoy_cc_library(
         ":schedulable_cb_lib",
         ":timer_lib",
         "//include/envoy/event:dispatcher_interface",
+        "//include/envoy/event:scheduler_interface",
         "//include/envoy/event:timer_interface",
         "//source/common/common:assert_lib",
     ],
