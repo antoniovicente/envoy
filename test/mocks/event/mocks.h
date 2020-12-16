@@ -76,7 +76,7 @@ public:
     return Network::UdpListenerPtr{createUdpListener_(socket, cb)};
   }
 
-  Event::TimerPtr createTimer(Event::TimerCb cb) override {
+  Event::TimerPtr createTimer(const Event::TimerCb& cb) override {
     auto timer = Event::TimerPtr{createTimer_(cb)};
     // Assert that the timer is not null to avoid confusing test failures down the line.
     ASSERT(timer != nullptr);

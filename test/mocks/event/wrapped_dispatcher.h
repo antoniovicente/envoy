@@ -76,7 +76,7 @@ public:
     return impl_.createUdpListener(std::move(socket), cb);
   }
 
-  TimerPtr createTimer(TimerCb cb) override { return impl_.createTimer(std::move(cb)); }
+  TimerPtr createTimer(const TimerCb& cb) override { return impl_.createTimer(cb); }
 
   Event::SchedulableCallbackPtr createSchedulableCallback(std::function<void()> cb) override {
     return impl_.createSchedulableCallback(std::move(cb));

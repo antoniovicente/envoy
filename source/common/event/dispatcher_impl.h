@@ -68,7 +68,7 @@ public:
                                       uint32_t backlog_size) override;
   Network::UdpListenerPtr createUdpListener(Network::SocketSharedPtr socket,
                                             Network::UdpListenerCallbacks& cb) override;
-  TimerPtr createTimer(TimerCb cb) override;
+  TimerPtr createTimer(const TimerCb& cb) override;
   Event::SchedulableCallbackPtr createSchedulableCallback(std::function<void()> cb) override;
   void deferredDelete(DeferredDeletablePtr&& to_delete) override;
   void exit() override;
@@ -122,7 +122,7 @@ private:
   };
   using WatchdogRegistrationPtr = std::unique_ptr<WatchdogRegistration>;
 
-  TimerPtr createTimerInternal(TimerCb cb);
+  TimerPtr createTimerInternal(const TimerCb& cb);
   void updateApproximateMonotonicTimeInternal();
   void runPostCallbacks();
   // Helper used to touch the watchdog after most schedulable, fd, and timer callbacks.

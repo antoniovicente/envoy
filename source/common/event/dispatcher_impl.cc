@@ -186,7 +186,7 @@ Network::UdpListenerPtr DispatcherImpl::createUdpListener(Network::SocketSharedP
   return std::make_unique<Network::UdpListenerImpl>(*this, std::move(socket), cb, timeSource());
 }
 
-TimerPtr DispatcherImpl::createTimer(TimerCb cb) {
+TimerPtr DispatcherImpl::createTimer(const TimerCb& cb) {
   ASSERT(isThreadSafe());
   return createTimerInternal(cb);
 }
@@ -199,7 +199,7 @@ Event::SchedulableCallbackPtr DispatcherImpl::createSchedulableCallback(std::fun
   });
 }
 
-TimerPtr DispatcherImpl::createTimerInternal(TimerCb cb) {
+TimerPtr DispatcherImpl::createTimerInternal(const TimerCb& cb) {
   return scheduler_->createTimer([this, cb]() {
     touchWatchdog();
     cb();

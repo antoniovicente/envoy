@@ -11,7 +11,7 @@
 #include "envoy/event/file_event.h"
 #include "envoy/event/schedulable_cb.h"
 #include "envoy/event/signal.h"
-#include "envoy/event/timer.h"
+#include "envoy/event/scheduler.h"
 #include "envoy/filesystem/watcher.h"
 #include "envoy/network/connection.h"
 #include "envoy/network/connection_handler.h"
@@ -54,7 +54,7 @@ using PostCbSharedPtr = std::shared_ptr<PostCb>;
 /**
  * Abstract event dispatching loop.
  */
-class Dispatcher {
+class Dispatcher : public Scheduler {
 public:
   virtual ~Dispatcher() = default;
 
@@ -173,12 +173,6 @@ public:
    */
   virtual Network::UdpListenerPtr createUdpListener(Network::SocketSharedPtr socket,
                                                     Network::UdpListenerCallbacks& cb) PURE;
-  /**
-   * Allocates a timer. @see Timer for docs on how to use the timer.
-   * @param cb supplies the callback to invoke when the timer fires.
-   */
-  virtual Event::TimerPtr createTimer(TimerCb cb) PURE;
-
   /**
    * Allocates a schedulable callback. @see SchedulableCallback for docs on how to use the wrapped
    * callback.
