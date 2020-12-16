@@ -53,7 +53,8 @@ private:
 // the expected thread.
 class SimulatedTimeSystemHelper::SimulatedScheduler : public Scheduler {
 public:
-  SimulatedScheduler(SimulatedTimeSystemHelper& time_system, Scheduler& base_scheduler, CallbackScheduler& cb_scheduler)
+  SimulatedScheduler(SimulatedTimeSystemHelper& time_system, Scheduler& base_scheduler,
+                     CallbackScheduler& cb_scheduler)
       : time_system_(time_system), base_scheduler_(base_scheduler), cb_scheduler_(cb_scheduler),
         thread_factory_(Thread::threadFactoryForTest()),
         run_alarms_cb_(cb_scheduler.createSchedulableCallback([this] { runReadyAlarms(); })),
@@ -64,9 +65,13 @@ public:
 
   // From Scheduler.
   TimerPtr createTimer(const TimerCb& cb) override;
-  const ScopeTrackedObject* setTrackedObject(const ScopeTrackedObject* object) override { return base_scheduler_.setTrackedObject(object); }
+  const ScopeTrackedObject* setTrackedObject(const ScopeTrackedObject* object) override {
+    return base_scheduler_.setTrackedObject(object);
+  }
   bool isThreadSafe() const override { return base_scheduler_.isThreadSafe(); }
-  MonotonicTime approximateMonotonicTime() const override { return base_scheduler_.approximateMonotonicTime(); }
+  MonotonicTime approximateMonotonicTime() const override {
+    return base_scheduler_.approximateMonotonicTime();
+  }
 
   // Implementation of SimulatedTimeSystemHelper::Alarm methods.
   bool isEnabled(Alarm& alarm) ABSL_LOCKS_EXCLUDED(mutex_);

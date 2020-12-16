@@ -490,7 +490,9 @@ TEST_F(DispatcherImplTest, TimerWithScope) {
       timer = dispatcher_->createTimer([this]() {
         {
           Thread::LockGuard lock(mu_);
-          static_cast<DispatcherImpl*>(dispatcher_.get())->onFatalError(std::cerr);
+          static_cast<DispatcherImpl*>(dispatcher_.get())
+              ->libeventSchedulerForTest()
+              .onFatalError(std::cerr);
           work_finished_ = true;
         }
         cv_.notifyOne();
@@ -550,18 +552,23 @@ TEST_F(DispatcherImplTest, OnlyRunsFatalActionsIfRunningOnSameThread) {
   // Should not run as dispatcher isn't running yet
   auto non_running_dispatcher = api_->allocateDispatcher("non_running_thread");
   static_cast<DispatcherImpl*>(non_running_dispatcher.get())
-      ->runFatalActionsOnTrackedObject(actions);
+      ->libeventSchedulerForTest()
+      .runFatalActionsOnTrackedObject(actions);
   ASSERT_EQ(action->getNumTimesRan(), 0);
 
   // Should not run when not on same thread
-  static_cast<DispatcherImpl*>(dispatcher_.get())->runFatalActionsOnTrackedObject(actions);
+  static_cast<DispatcherImpl*>(dispatcher_.get())
+      ->libeventSchedulerForTest()
+      .runFatalActionsOnTrackedObject(actions);
   ASSERT_EQ(action->getNumTimesRan(), 0);
 
   // Should run since on same thread as dispatcher
   dispatcher_->post([this, &actions]() {
     {
       Thread::LockGuard lock(mu_);
-      static_cast<DispatcherImpl*>(dispatcher_.get())->runFatalActionsOnTrackedObject(actions);
+      static_cast<DispatcherImpl*>(dispatcher_.get())
+          ->libeventSchedulerForTest()
+          .runFatalActionsOnTrackedObject(actions);
       work_finished_ = true;
     }
     cv_.notifyOne();

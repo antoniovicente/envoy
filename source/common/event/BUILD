@@ -123,8 +123,6 @@ envoy_cc_library(
         "//include/envoy/event:time_system_interface",
         "//include/envoy/network:connection_handler_interface",
         "//source/common/common:minimal_logger_lib",
-        "//source/common/common:thread_lib",
-        "//source/common/signal:fatal_error_handler_lib",
     ] + select({
         "//bazel:disable_signal_trace": [],
         "//conditions:default": [
@@ -143,6 +141,8 @@ envoy_cc_library(
     deps = [
         "//source/common/common:assert_lib",
         "//source/common/common:c_smart_ptr_lib",
+        "//source/common/common:thread_lib",
+        "//source/common/signal:fatal_error_handler_lib",
     ],
 )
 

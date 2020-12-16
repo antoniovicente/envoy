@@ -5,6 +5,7 @@
 
 #include "test/mocks/common.h"
 #include "test/mocks/event/mocks.h"
+#include "test/mocks/thread/mocks.h"
 #include "test/test_common/simulated_time_system.h"
 #include "test/test_common/test_runtime.h"
 #include "test/test_common/utility.h"
@@ -66,9 +67,9 @@ protected:
   }
 
   TestScopedRuntime scoped_runtime_;
-  Event::MockDispatcher dispatcher_;
-  LibeventScheduler base_scheduler_{dispatcher_};
   SimulatedTimeSystem time_system_;
+  testing::NiceMock<Thread::MockThreadFactory> thread_factory_;
+  LibeventScheduler base_scheduler_{time_system_, thread_factory_};
   SchedulerPtr scheduler_;
   std::string output_;
   std::vector<TimerPtr> timers_;

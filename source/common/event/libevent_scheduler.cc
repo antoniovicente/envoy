@@ -15,7 +15,8 @@ void recordTimeval(Stats::Histogram& histogram, const timeval& tv) {
 }
 } // namespace
 
-LibeventScheduler::LibeventScheduler(Dispatcher& dispatcher) : dispatcher_(dispatcher) {
+LibeventScheduler::LibeventScheduler(TimeSource& time_source, Thread::ThreadFactory& thread_factory)
+    : time_source_(time_source), thread_factory_(thread_factory) {
 #ifdef WIN32
   event_config* event_config = event_config_new();
   RELEASE_ASSERT(event_config != nullptr,
@@ -30,21 +31,59 @@ LibeventScheduler::LibeventScheduler(Dispatcher& dispatcher) : dispatcher_(dispa
 #endif
   RELEASE_ASSERT(event_base != nullptr, "Failed to initialize libevent event_base");
   libevent_ = Libevent::BasePtr(event_base);
-
   // The dispatcher won't work as expected if libevent hasn't been configured to use threads.
   RELEASE_ASSERT(Libevent::Global::initialized(), "");
+
+  updateApproximateMonotonicTimeInternal();
+  registerOnPrepareCallback(std::bind(&LibeventScheduler::updateApproximateMonotonicTime, this));
+
+  FatalErrorHandler::registerFatalErrorHandler(*this);
 }
 
+LibeventScheduler::~LibeventScheduler() { FatalErrorHandler::registerFatalErrorHandler(*this); }
+
 TimerPtr LibeventScheduler::createTimer(const TimerCb& cb) {
-  return std::make_unique<TimerImpl>(libevent_, cb, dispatcher_);
+  return std::make_unique<TimerImpl>(libevent_, cb, *this);
 };
+
+MonotonicTime LibeventScheduler::approximateMonotonicTime() const {
+  return approximate_monotonic_time_;
+}
 
 SchedulableCallbackPtr
 LibeventScheduler::createSchedulableCallback(const std::function<void()>& cb) {
   return std::make_unique<SchedulableCallbackImpl>(libevent_, cb);
 };
 
+void LibeventScheduler::runFatalActionsOnTrackedObject(
+    const FatalAction::FatalActionPtrList& actions) const {
+  // Only run if this is the dispatcher of the current thread and
+  // DispatcherImpl::Run has been called.
+  if (run_tid_.isEmpty() || (run_tid_ != thread_factory_.currentThreadId())) {
+    return;
+  }
+
+  for (const auto& action : actions) {
+    action->run(current_object_);
+  }
+}
+
+void LibeventScheduler::updateApproximateMonotonicTime() {
+  updateApproximateMonotonicTimeInternal();
+}
+
+void LibeventScheduler::updateApproximateMonotonicTimeInternal() {
+  approximate_monotonic_time_ = time_source_.monotonicTime();
+}
+
+void LibeventScheduler::recordTid() {
+  ASSERT(isThreadSafe());
+  run_tid_ = thread_factory_.currentThreadId();
+}
+
 void LibeventScheduler::run(Dispatcher::RunType mode) {
+  ASSERT(run_tid_ == thread_factory_.currentThreadId());
+
   int flag = 0;
   switch (mode) {
   case Dispatcher::RunType::NonBlock:
@@ -64,10 +103,16 @@ void LibeventScheduler::loopExit() { event_base_loopexit(libevent_.get(), nullpt
 
 void LibeventScheduler::registerOnPrepareCallback(OnPrepareCallback&& callback) {
   ASSERT(callback);
-  ASSERT(!callback_);
-
-  callback_ = std::move(callback);
-  evwatch_prepare_new(libevent_.get(), &onPrepareForCallback, this);
+  if (callback_) {
+    OnPrepareCallback prev_callback = std::move(callback_);
+    callback_ = [prev_callback, callback]() {
+      prev_callback();
+      callback();
+    };
+  } else {
+    callback_ = std::move(callback);
+    evwatch_prepare_new(libevent_.get(), &onPrepareForCallback, this);
+  }
 }
 
 void LibeventScheduler::initializeStats(DispatcherStats* stats) {

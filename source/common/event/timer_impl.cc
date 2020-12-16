@@ -10,8 +10,8 @@
 namespace Envoy {
 namespace Event {
 
-TimerImpl::TimerImpl(Libevent::BasePtr& libevent, TimerCb cb, Dispatcher& dispatcher)
-    : cb_(cb), dispatcher_(dispatcher),
+TimerImpl::TimerImpl(Libevent::BasePtr& libevent, TimerCb cb, Scheduler& scheduler)
+    : cb_(cb), scheduler_(scheduler),
       activate_timers_next_event_loop_(
           // Only read the runtime feature if the runtime loader singleton has already been created.
           // Accessing runtime features too early in the initialization sequence triggers logging
@@ -30,7 +30,7 @@ TimerImpl::TimerImpl(Libevent::BasePtr& libevent, TimerCb cb, Dispatcher& dispat
           timer->cb_();
           return;
         }
-        ScopeTrackerScopeState scope(timer->object_, timer->dispatcher_);
+        ScopeTrackerScopeState scope(timer->object_, timer->scheduler_);
         timer->object_ = nullptr;
         timer->cb_();
       },

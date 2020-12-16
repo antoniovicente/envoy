@@ -43,20 +43,15 @@ DispatcherImpl::DispatcherImpl(const std::string& name, Api::Api& api,
 
 DispatcherImpl::DispatcherImpl(const std::string& name, Buffer::WatermarkFactoryPtr&& factory,
                                Api::Api& api, Event::TimeSystem& time_system)
-    : name_(name), api_(api), buffer_factory_(std::move(factory)), base_scheduler_(*this),
+    : name_(name), api_(api), buffer_factory_(std::move(factory)),
+      base_scheduler_(api_.timeSource(), api_.threadFactory()),
       scheduler_(time_system.createScheduler(base_scheduler_, base_scheduler_)),
       deferred_delete_cb_(base_scheduler_.createSchedulableCallback(
           [this]() -> void { clearDeferredDeleteList(); })),
       post_cb_(base_scheduler_.createSchedulableCallback([this]() -> void { runPostCallbacks(); })),
       current_to_delete_(&to_delete_1_) {
   ASSERT(!name_.empty());
-  FatalErrorHandler::registerFatalErrorHandler(*this);
-  updateApproximateMonotonicTimeInternal();
-  base_scheduler_.registerOnPrepareCallback(
-      std::bind(&DispatcherImpl::updateApproximateMonotonicTime, this));
 }
-
-DispatcherImpl::~DispatcherImpl() { FatalErrorHandler::removeFatalErrorHandler(*this); }
 
 void DispatcherImpl::registerWatchdog(const Server::WatchDogSharedPtr& watchdog,
                                       std::chrono::milliseconds min_touch_interval) {
@@ -74,7 +69,8 @@ void DispatcherImpl::initializeStats(Stats::Scope& scope,
     stats_ = std::make_unique<DispatcherStats>(
         DispatcherStats{ALL_DISPATCHER_STATS(POOL_HISTOGRAM_PREFIX(scope, stats_prefix_ + "."))});
     base_scheduler_.initializeStats(stats_.get());
-    ENVOY_LOG(debug, "running {} on thread {}", stats_prefix_, run_tid_.debugString());
+    ENVOY_LOG(debug, "running {} on thread {}", stats_prefix_,
+              base_scheduler_.runTid().debugString());
   });
 }
 
@@ -236,24 +232,13 @@ void DispatcherImpl::post(std::function<void()> callback) {
 }
 
 void DispatcherImpl::run(RunType type) {
-  run_tid_ = api_.threadFactory().currentThreadId();
-
+  base_scheduler_.recordTid();
   // Flush all post callbacks before we run the event loop. We do this because there are post
   // callbacks that have to get run before the initial event loop starts running. libevent does
   // not guarantee that events are run in any particular order. So even if we post() and call
   // event_base_once() before some other event, the other event might get called first.
   runPostCallbacks();
   base_scheduler_.run(type);
-}
-
-MonotonicTime DispatcherImpl::approximateMonotonicTime() const {
-  return approximate_monotonic_time_;
-}
-
-void DispatcherImpl::updateApproximateMonotonicTime() { updateApproximateMonotonicTimeInternal(); }
-
-void DispatcherImpl::updateApproximateMonotonicTimeInternal() {
-  approximate_monotonic_time_ = api_.timeSource().monotonicTime();
 }
 
 void DispatcherImpl::runPostCallbacks() {
@@ -283,19 +268,6 @@ void DispatcherImpl::runPostCallbacks() {
     // Pop the front so that the destructor of the callback that just executed runs before the next
     // callback executes.
     callbacks.pop_front();
-  }
-}
-
-void DispatcherImpl::runFatalActionsOnTrackedObject(
-    const FatalAction::FatalActionPtrList& actions) const {
-  // Only run if this is the dispatcher of the current thread and
-  // DispatcherImpl::Run has been called.
-  if (run_tid_.isEmpty() || (run_tid_ != api_.threadFactory().currentThreadId())) {
-    return;
-  }
-
-  for (const auto& action : actions) {
-    action->run(current_object_);
   }
 }
 

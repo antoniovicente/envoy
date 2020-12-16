@@ -8,6 +8,7 @@
 #include "envoy/event/timer.h"
 
 #include "common/event/libevent.h"
+#include "common/signal/fatal_error_handler.h"
 
 #include "event2/event.h"
 #include "event2/watch.h"
@@ -57,23 +58,56 @@ namespace Event {
 // 1. Fd events
 // 2. Timers, FileEvent::activate and SchedulableCallback::scheduleCallbackNextIteration
 // 3. "Same-iteration" work items described above, including Event::Dispatcher::post callbacks
-class LibeventScheduler : public Scheduler, public CallbackScheduler {
+class LibeventScheduler : public Scheduler,
+                          public CallbackScheduler,
+                          public FatalErrorHandlerInterface {
 public:
   using OnPrepareCallback = std::function<void()>;
-  LibeventScheduler(Dispatcher& dispatcher);
+  LibeventScheduler(TimeSource& time_source, Thread::ThreadFactory& thread_factory);
+  ~LibeventScheduler() override;
 
   // Scheduler
   TimerPtr createTimer(const TimerCb& cb) override;
   const ScopeTrackedObject* setTrackedObject(const ScopeTrackedObject* object) override {
-    return dispatcher_.setTrackedObject(object);
+    const ScopeTrackedObject* return_object = current_object_;
+    current_object_ = object;
+    return return_object;
   }
   bool isThreadSafe() const override {
-    return dispatcher_.isThreadSafe();
+    return run_tid_.isEmpty() || run_tid_ == thread_factory_.currentThreadId();
   }
-  MonotonicTime approximateMonotonicTime() const override{ return dispatcher_.approximateMonotonicTime(); }
+  MonotonicTime approximateMonotonicTime() const override;
 
   // CallbackScheduler
   SchedulableCallbackPtr createSchedulableCallback(const std::function<void()>& cb) override;
+
+  // FatalErrorInterface
+  void onFatalError(std::ostream& os) const override {
+    // Dump the state of the tracked object if it is in the current thread. This generally results
+    // in dumping the active state only for the thread which caused the fatal error.
+    if (isThreadSafe()) {
+      if (current_object_) {
+        current_object_->dumpState(os);
+      }
+    }
+  }
+  void
+  runFatalActionsOnTrackedObject(const FatalAction::FatalActionPtrList& actions) const override;
+
+  /**
+   * Updates approximate monotonic time to current value.
+   */
+  void updateApproximateMonotonicTime();
+
+  /**
+   * Id of the thread where this event loop is running.
+   */
+  Thread::ThreadId runTid() const { return run_tid_; }
+
+  /**
+   * Associate the scheduler with the current thread. Must be called before run().
+   */
+  void recordTid();
 
   /**
    * Runs the event loop.
@@ -126,8 +160,14 @@ private:
     return EVLOOP_NONBLOCK;
   }
 
+  void updateApproximateMonotonicTimeInternal();
+
   Libevent::BasePtr libevent_;
-  Dispatcher& dispatcher_;
+  TimeSource& time_source_;
+  Thread::ThreadFactory& thread_factory_;
+  Thread::ThreadId run_tid_;
+  const ScopeTrackedObject* current_object_{};
+  MonotonicTime approximate_monotonic_time_;
   DispatcherStats* stats_{}; // stats owned by the containing DispatcherImpl
   bool timeout_set_{};       // whether there is a poll timeout in the current event loop iteration
   timeval timeout_{};        // the poll timeout for the current event loop iteration, if available

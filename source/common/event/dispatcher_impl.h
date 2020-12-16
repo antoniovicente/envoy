@@ -19,7 +19,6 @@
 #include "common/common/thread.h"
 #include "common/event/libevent.h"
 #include "common/event/libevent_scheduler.h"
-#include "common/signal/fatal_error_handler.h"
 
 namespace Envoy {
 namespace Event {
@@ -27,14 +26,11 @@ namespace Event {
 /**
  * libevent implementation of Event::Dispatcher.
  */
-class DispatcherImpl : Logger::Loggable<Logger::Id::main>,
-                       public Dispatcher,
-                       public FatalErrorHandlerInterface {
+class DispatcherImpl : Logger::Loggable<Logger::Id::main>, public Dispatcher {
 public:
   DispatcherImpl(const std::string& name, Api::Api& api, Event::TimeSystem& time_system);
   DispatcherImpl(const std::string& name, Buffer::WatermarkFactoryPtr&& factory, Api::Api& api,
                  Event::TimeSystem& time_system);
-  ~DispatcherImpl() override;
 
   /**
    * @return event_base& the libevent base.
@@ -77,26 +73,16 @@ public:
   void run(RunType type) override;
   Buffer::WatermarkFactory& getWatermarkFactory() override { return *buffer_factory_; }
   const ScopeTrackedObject* setTrackedObject(const ScopeTrackedObject* object) override {
-    const ScopeTrackedObject* return_object = current_object_;
-    current_object_ = object;
-    return return_object;
+    return base_scheduler_.setTrackedObject(object);
   }
-  MonotonicTime approximateMonotonicTime() const override;
-  void updateApproximateMonotonicTime() override;
-
-  // FatalErrorInterface
-  void onFatalError(std::ostream& os) const override {
-    // Dump the state of the tracked object if it is in the current thread. This generally results
-    // in dumping the active state only for the thread which caused the fatal error.
-    if (isThreadSafe()) {
-      if (current_object_) {
-        current_object_->dumpState(os);
-      }
-    }
+  MonotonicTime approximateMonotonicTime() const override {
+    return base_scheduler_.approximateMonotonicTime();
+  }
+  void updateApproximateMonotonicTime() override {
+    base_scheduler_.updateApproximateMonotonicTime();
   }
 
-  void
-  runFatalActionsOnTrackedObject(const FatalAction::FatalActionPtrList& actions) const override;
+  LibeventScheduler& libeventSchedulerForTest() { return base_scheduler_; }
 
 private:
   // Holds a reference to the watchdog registered with this dispatcher and the timer used to ensure
@@ -123,7 +109,6 @@ private:
   using WatchdogRegistrationPtr = std::unique_ptr<WatchdogRegistration>;
 
   TimerPtr createTimerInternal(const TimerCb& cb);
-  void updateApproximateMonotonicTimeInternal();
   void runPostCallbacks();
   // Helper used to touch the watchdog after most schedulable, fd, and timer callbacks.
   void touchWatchdog();
@@ -131,15 +116,12 @@ private:
   // Validate that an operation is thread safe, i.e. it's invoked on the same thread that the
   // dispatcher run loop is executing on. We allow run_tid_ to be empty for tests where we don't
   // invoke run().
-  bool isThreadSafe() const override {
-    return run_tid_.isEmpty() || run_tid_ == api_.threadFactory().currentThreadId();
-  }
+  bool isThreadSafe() const override { return base_scheduler_.isThreadSafe(); }
 
   const std::string name_;
   Api::Api& api_;
   std::string stats_prefix_;
   DispatcherStatsPtr stats_;
-  Thread::ThreadId run_tid_;
   Buffer::WatermarkFactoryPtr buffer_factory_;
   LibeventScheduler base_scheduler_;
   SchedulerPtr scheduler_;
@@ -150,9 +132,7 @@ private:
   std::vector<DeferredDeletablePtr>* current_to_delete_;
   Thread::MutexBasicLockable post_lock_;
   std::list<std::function<void()>> post_callbacks_ ABSL_GUARDED_BY(post_lock_);
-  const ScopeTrackedObject* current_object_{};
   bool deferred_deleting_{};
-  MonotonicTime approximate_monotonic_time_;
   WatchdogRegistrationPtr watchdog_registration_;
 };
 
