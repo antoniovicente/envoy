@@ -43,7 +43,7 @@ DispatcherImpl::DispatcherImpl(const std::string& name, Api::Api& api,
 
 DispatcherImpl::DispatcherImpl(const std::string& name, Buffer::WatermarkFactoryPtr&& factory,
                                Api::Api& api, Event::TimeSystem& time_system)
-    : name_(name), api_(api), buffer_factory_(std::move(factory)),
+    : name_(name), api_(api), buffer_factory_(std::move(factory)), base_scheduler_(*this),
       scheduler_(time_system.createScheduler(base_scheduler_, base_scheduler_)),
       deferred_delete_cb_(base_scheduler_.createSchedulableCallback(
           [this]() -> void { clearDeferredDeleteList(); })),
@@ -62,7 +62,7 @@ void DispatcherImpl::registerWatchdog(const Server::WatchDogSharedPtr& watchdog,
                                       std::chrono::milliseconds min_touch_interval) {
   ASSERT(!watchdog_registration_, "Each dispatcher can have at most one registered watchdog.");
   watchdog_registration_ =
-      std::make_unique<WatchdogRegistration>(watchdog, *scheduler_, min_touch_interval, *this);
+      std::make_unique<WatchdogRegistration>(watchdog, *scheduler_, min_touch_interval);
 }
 
 void DispatcherImpl::initializeStats(Stats::Scope& scope,
@@ -200,12 +200,10 @@ Event::SchedulableCallbackPtr DispatcherImpl::createSchedulableCallback(std::fun
 }
 
 TimerPtr DispatcherImpl::createTimerInternal(TimerCb cb) {
-  return scheduler_->createTimer(
-      [this, cb]() {
-        touchWatchdog();
-        cb();
-      },
-      *this);
+  return scheduler_->createTimer([this, cb]() {
+    touchWatchdog();
+    cb();
+  });
 }
 
 void DispatcherImpl::deferredDelete(DeferredDeletablePtr&& to_delete) {

@@ -103,14 +103,12 @@ private:
   class WatchdogRegistration {
   public:
     WatchdogRegistration(const Server::WatchDogSharedPtr& watchdog, Scheduler& scheduler,
-                         std::chrono::milliseconds timer_interval, Dispatcher& dispatcher)
+                         std::chrono::milliseconds timer_interval)
         : watchdog_(watchdog), timer_interval_(timer_interval) {
-      touch_timer_ = scheduler.createTimer(
-          [this]() -> void {
-            watchdog_->touch();
-            touch_timer_->enableTimer(timer_interval_);
-          },
-          dispatcher);
+      touch_timer_ = scheduler.createTimer([this]() -> void {
+        watchdog_->touch();
+        touch_timer_->enableTimer(timer_interval_);
+      });
       touch_timer_->enableTimer(timer_interval_);
     }
 

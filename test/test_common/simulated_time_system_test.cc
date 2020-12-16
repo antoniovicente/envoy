@@ -44,15 +44,13 @@ protected:
   void addCustomTask(int64_t delay_ms, char marker, std::function<void()> cb,
                      bool expect_monotonic = true) {
     std::chrono::milliseconds delay(delay_ms);
-    TimerPtr timer = scheduler_->createTimer(
-        [this, marker, delay, cb, expect_monotonic]() {
-          output_.append(1, marker);
-          if (expect_monotonic) {
-            EXPECT_GE(time_system_.monotonicTime(), start_monotonic_time_ + delay);
-          }
-          cb();
-        },
-        dispatcher_);
+    TimerPtr timer = scheduler_->createTimer([this, marker, delay, cb, expect_monotonic]() {
+      output_.append(1, marker);
+      if (expect_monotonic) {
+        EXPECT_GE(time_system_.monotonicTime(), start_monotonic_time_ + delay);
+      }
+      cb();
+    });
     timer->enableTimer(delay);
     timers_.push_back(std::move(timer));
   }
@@ -69,7 +67,7 @@ protected:
 
   TestScopedRuntime scoped_runtime_;
   Event::MockDispatcher dispatcher_;
-  LibeventScheduler base_scheduler_;
+  LibeventScheduler base_scheduler_{dispatcher_};
   SimulatedTimeSystem time_system_;
   SchedulerPtr scheduler_;
   std::string output_;
@@ -312,12 +310,10 @@ TEST_P(SimulatedTimeSystemTest, WaitFor) {
     }
   });
 
-  TimerPtr timer = scheduler_->createTimer(
-      [&mutex, &done]() {
-        absl::MutexLock lock(&mutex);
-        done = true;
-      },
-      dispatcher_);
+  TimerPtr timer = scheduler_->createTimer([&mutex, &done]() {
+    absl::MutexLock lock(&mutex);
+    done = true;
+  });
   timer->enableTimer(std::chrono::seconds(60));
 
   // Wait 1ms of real time. waitFor() does not advance simulated time, so this is just going to
@@ -440,7 +436,7 @@ TEST_P(SimulatedTimeSystemTest, DeleteTime) {
 TEST_P(SimulatedTimeSystemTest, DuplicateTimer) {
   // Set one alarm two times to test that pending does not get duplicated..
   std::chrono::milliseconds delay(0);
-  TimerPtr zero_timer = scheduler_->createTimer([this]() { output_.append(1, '2'); }, dispatcher_);
+  TimerPtr zero_timer = scheduler_->createTimer([this]() { output_.append(1, '2'); });
   zero_timer->enableTimer(delay);
   zero_timer->enableTimer(delay);
   advanceMsAndLoop(1);
@@ -466,12 +462,10 @@ TEST_P(SimulatedTimeSystemTest, DuplicateTimer2) {
     }
   });
 
-  TimerPtr timer = scheduler_->createTimer(
-      [&mutex, &done]() {
-        absl::MutexLock lock(&mutex);
-        done = true;
-      },
-      dispatcher_);
+  TimerPtr timer = scheduler_->createTimer([&mutex, &done]() {
+    absl::MutexLock lock(&mutex);
+    done = true;
+  });
   timer->enableTimer(std::chrono::seconds(10));
 
   {
@@ -491,13 +485,13 @@ TEST_P(SimulatedTimeSystemTest, DuplicateTimer2) {
 }
 
 TEST_P(SimulatedTimeSystemTest, Enabled) {
-  TimerPtr timer = scheduler_->createTimer({}, dispatcher_);
+  TimerPtr timer = scheduler_->createTimer({});
   timer->enableTimer(std::chrono::milliseconds(0));
   EXPECT_TRUE(timer->enabled());
 }
 
 TEST_P(SimulatedTimeSystemTest, DeleteTimerFromThread) {
-  TimerPtr timer = scheduler_->createTimer([]() {}, dispatcher_);
+  TimerPtr timer = scheduler_->createTimer([]() {});
   timer->enableTimer(std::chrono::milliseconds(0));
   auto thread = Thread::threadFactoryForTest().createThread([&timer]() { timer.reset(); });
   advanceMsAndLoop(1);
@@ -505,7 +499,7 @@ TEST_P(SimulatedTimeSystemTest, DeleteTimerFromThread) {
 }
 
 TEST_P(SimulatedTimeSystemTest, DeleteTimerFromThread2) {
-  TimerPtr timer = scheduler_->createTimer([]() {}, dispatcher_);
+  TimerPtr timer = scheduler_->createTimer([]() {});
   timer->enableTimer(std::chrono::milliseconds(1));
   auto thread = Thread::threadFactoryForTest().createThread([&timer]() { timer.reset(); });
   advanceMsAndLoop(1);

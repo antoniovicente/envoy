@@ -15,7 +15,7 @@ void recordTimeval(Stats::Histogram& histogram, const timeval& tv) {
 }
 } // namespace
 
-LibeventScheduler::LibeventScheduler() {
+LibeventScheduler::LibeventScheduler(Dispatcher& dispatcher) : dispatcher_(dispatcher) {
 #ifdef WIN32
   event_config* event_config = event_config_new();
   RELEASE_ASSERT(event_config != nullptr,
@@ -35,8 +35,8 @@ LibeventScheduler::LibeventScheduler() {
   RELEASE_ASSERT(Libevent::Global::initialized(), "");
 }
 
-TimerPtr LibeventScheduler::createTimer(const TimerCb& cb, Dispatcher& dispatcher) {
-  return std::make_unique<TimerImpl>(libevent_, cb, dispatcher);
+TimerPtr LibeventScheduler::createTimer(const TimerCb& cb) {
+  return std::make_unique<TimerImpl>(libevent_, cb, dispatcher_);
 };
 
 SchedulableCallbackPtr

@@ -67,7 +67,7 @@ public:
   /**
    * Creates a timer.
    */
-  virtual TimerPtr createTimer(const TimerCb& cb, Dispatcher& dispatcher) PURE;
+  virtual TimerPtr createTimer(const TimerCb& cb) PURE;
 };
 
 using SchedulerPtr = std::unique_ptr<Scheduler>;

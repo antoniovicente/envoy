@@ -63,7 +63,7 @@ public:
   ~SimulatedScheduler() override { time_system_.unregisterScheduler(this); }
 
   // From Scheduler.
-  TimerPtr createTimer(const TimerCb& cb, Dispatcher& /*dispatcher*/) override;
+  TimerPtr createTimer(const TimerCb& cb) override;
 
   // Implementation of SimulatedTimeSystemHelper::Alarm methods.
   bool isEnabled(Alarm& alarm) ABSL_LOCKS_EXCLUDED(mutex_);
@@ -253,8 +253,7 @@ private:
   SimulatedTimeSystemHelper& time_system_;
 };
 
-TimerPtr SimulatedTimeSystemHelper::SimulatedScheduler::createTimer(const TimerCb& cb,
-                                                                    Dispatcher& /*dispatcher*/) {
+TimerPtr SimulatedTimeSystemHelper::SimulatedScheduler::createTimer(const TimerCb& cb) {
   return std::make_unique<SimulatedTimeSystemHelper::Alarm>(*this, time_system_, cb_scheduler_, cb);
 }
 

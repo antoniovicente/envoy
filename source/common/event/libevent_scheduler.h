@@ -59,10 +59,10 @@ namespace Event {
 class LibeventScheduler : public Scheduler, public CallbackScheduler {
 public:
   using OnPrepareCallback = std::function<void()>;
-  LibeventScheduler();
+  LibeventScheduler(Dispatcher& dispatcher);
 
   // Scheduler
-  TimerPtr createTimer(const TimerCb& cb, Dispatcher& dispatcher) override;
+  TimerPtr createTimer(const TimerCb& cb) override;
   SchedulableCallbackPtr createSchedulableCallback(const std::function<void()>& cb) override;
 
   /**
@@ -117,6 +117,7 @@ private:
   }
 
   Libevent::BasePtr libevent_;
+  Dispatcher& dispatcher_;
   DispatcherStats* stats_{}; // stats owned by the containing DispatcherImpl
   bool timeout_set_{};       // whether there is a poll timeout in the current event loop iteration
   timeval timeout_{};        // the poll timeout for the current event loop iteration, if available
