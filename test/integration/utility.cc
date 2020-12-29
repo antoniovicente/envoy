@@ -164,9 +164,9 @@ RawConnectionDriver::RawConnectionDriver(uint32_t port, DoWriteCallback write_re
           fmt::format("tcp://{}:{}", Network::Test::getLoopbackAddressUrlString(version), port)),
       Network::Address::InstanceConstSharedPtr(), std::move(transport_socket), nullptr);
   // ConnectionCallbacks will call write_request_callback from the connect and low-watermark
-  // callbacks. Set a small buffer limit so high-watermark is triggered after every write and
-  // low-watermark is triggered every time the buffer is drained.
-  client_->setBufferLimits(1);
+  // callbacks. Set a small write buffer limit so high-watermark is triggered after every write and
+  // low-watermark is triggered every time the output buffer is drained.
+  client_->setBufferLimits(0, 1);
   client_->addConnectionCallbacks(*callbacks_);
   client_->addReadFilter(
       Network::ReadFilterSharedPtr{new ForwardingFilter(*this, response_data_callback)});

@@ -55,8 +55,8 @@ private:
 
     // Network::ConnectionCallbacks
     void onEvent(Network::ConnectionEvent event) override;
-    void onAboveWriteBufferHighWatermark() override {}
-    void onBelowWriteBufferLowWatermark() override {}
+    void onAboveWriteBufferHighWatermark() override { parent_.high_watermark_triggered_ = true; }
+    void onBelowWriteBufferLowWatermark() override { parent_.high_watermark_triggered_ = false; }
 
     IntegrationCodecClient& parent_;
   };
@@ -78,6 +78,7 @@ private:
   bool connected_{};
   bool disconnected_{};
   bool saw_goaway_{};
+  bool high_watermark_triggered_{};
   Network::ConnectionEvent last_connection_event_;
 };
 
@@ -143,10 +144,12 @@ protected:
   // upstream index may be provided, in which case both upstreams will be checked for requests.
   absl::optional<uint64_t> waitForNextUpstreamRequest(
       const std::vector<uint64_t>& upstream_indices,
-      std::chrono::milliseconds connection_wait_timeout = TestUtility::DefaultTimeout);
+      std::chrono::milliseconds connection_wait_timeout = TestUtility::DefaultTimeout,
+      bool drive_client_dispatcher = true);
   void waitForNextUpstreamRequest(
       uint64_t upstream_index = 0,
-      std::chrono::milliseconds connection_wait_timeout = TestUtility::DefaultTimeout);
+      std::chrono::milliseconds connection_wait_timeout = TestUtility::DefaultTimeout,
+      bool drive_client_dispatcher = true);
 
   // Close |codec_client_| and |fake_upstream_connection_| cleanly.
   void cleanupUpstreamAndDownstream();

@@ -74,8 +74,9 @@ public:
   MOCK_METHOD(State, state, (), (const));                                                          \
   MOCK_METHOD(bool, connecting, (), (const));                                                      \
   MOCK_METHOD(void, write, (Buffer::Instance & data, bool end_stream));                            \
-  MOCK_METHOD(void, setBufferLimits, (uint32_t limit));                                            \
-  MOCK_METHOD(uint32_t, bufferLimit, (), (const));                                                 \
+  MOCK_METHOD(void, setBufferLimits, (uint32_t read_buffer_limit, uint32_t write_buffer_limit));   \
+  MOCK_METHOD(uint32_t, readBufferLimit, (), (const));                                             \
+  MOCK_METHOD(uint32_t, writeBufferLimit, (), (const));                                            \
   MOCK_METHOD(bool, aboveHighWatermark, (), (const));                                              \
   MOCK_METHOD(const Network::ConnectionSocket::OptionsSharedPtr&, socketOptions, (), (const));     \
   MOCK_METHOD(StreamInfo::StreamInfo&, streamInfo, ());                                            \

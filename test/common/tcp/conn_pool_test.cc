@@ -313,7 +313,7 @@ public:
 
   void prepareConn() {
     connection_ = new StrictMock<Network::MockClientConnection>();
-    EXPECT_CALL(*connection_, setBufferLimits(0));
+    EXPECT_CALL(*connection_, setBufferLimits(0, 0));
     EXPECT_CALL(*connection_, detectEarlyCloseWhenReadDisabled(false));
     EXPECT_CALL(*connection_, addConnectionCallbacks(_));
     EXPECT_CALL(*connection_, addReadFilter(_));
@@ -488,7 +488,7 @@ TEST_P(TcpConnPoolImplTest, VerifyBufferLimitsAndOptions) {
   ConnPoolCallbacks callbacks;
   conn_pool_->expectConnCreate();
   EXPECT_CALL(*cluster_, perConnectionBufferLimitBytes()).WillOnce(Return(8192));
-  EXPECT_CALL(*conn_pool_->test_conns_.back().connection_, setBufferLimits(8192));
+  EXPECT_CALL(*conn_pool_->test_conns_.back().connection_, setBufferLimits(8192, 8192));
 
   EXPECT_CALL(callbacks.pool_failure_, ready());
   Tcp::ConnectionPool::Cancellable* handle = conn_pool_->newConnection(callbacks);

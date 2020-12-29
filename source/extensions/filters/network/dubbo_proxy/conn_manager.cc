@@ -16,8 +16,6 @@ namespace Extensions {
 namespace NetworkFilters {
 namespace DubboProxy {
 
-constexpr uint32_t BufferLimit = UINT32_MAX;
-
 ConnectionManager::ConnectionManager(Config& config, Random::RandomGenerator& random_generator,
                                      TimeSource& time_system)
     : config_(config), time_system_(time_system), stats_(config_.stats()),
@@ -61,7 +59,7 @@ void ConnectionManager::initializeReadFilterCallbacks(Network::ReadFilterCallbac
   read_callbacks_ = &callbacks;
   read_callbacks_->connection().addConnectionCallbacks(*this);
   read_callbacks_->connection().enableHalfClose(true);
-  read_callbacks_->connection().setBufferLimits(BufferLimit);
+  read_callbacks_->connection().setBufferLimits(0, 0);
 }
 
 void ConnectionManager::onEvent(Network::ConnectionEvent event) {

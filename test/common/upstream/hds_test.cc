@@ -394,7 +394,7 @@ TEST_F(HdsTest, TestProcessMessageMissingFieldsWithFallback) {
   EXPECT_CALL(*server_response_timer_, enableTimer(_, _)).Times(2);
   EXPECT_CALL(async_stream_, sendMessageRaw_(_, false));
   EXPECT_CALL(test_factory_, createClusterInfo(_)).WillOnce(Return(cluster_info_));
-  EXPECT_CALL(*connection, setBufferLimits(_));
+  EXPECT_CALL(*connection, setBufferLimits(_, _));
   EXPECT_CALL(dispatcher_, deferredDelete_(_));
   // Process message
   hds_delegate_->onReceiveMessage(std::move(message));
@@ -568,7 +568,7 @@ TEST_F(HdsTest, TestSocketContext) {
         return cluster_info_;
       }));
 
-  EXPECT_CALL(*connection, setBufferLimits(_));
+  EXPECT_CALL(*connection, setBufferLimits(_, _));
   EXPECT_CALL(dispatcher_, deferredDelete_(_));
 
   // Process message.
@@ -671,7 +671,7 @@ TEST_F(HdsTest, TestSendResponseOneEndpointTimeout) {
   EXPECT_CALL(*server_response_timer_, enableTimer(_, _)).Times(2);
   EXPECT_CALL(async_stream_, sendMessageRaw_(_, false));
   EXPECT_CALL(test_factory_, createClusterInfo(_)).WillOnce(Return(cluster_info_));
-  EXPECT_CALL(*connection_, setBufferLimits(_));
+  EXPECT_CALL(*connection_, setBufferLimits(_, _));
   EXPECT_CALL(dispatcher_, deferredDelete_(_));
   // Process message
   hds_delegate_->onReceiveMessage(std::move(message));

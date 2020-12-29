@@ -480,8 +480,9 @@ void ConnectionImpl::write(Buffer::Instance& data, bool end_stream, bool through
   }
 }
 
-void ConnectionImpl::setBufferLimits(uint32_t limit) {
-  read_buffer_limit_ = limit;
+void ConnectionImpl::setBufferLimits(uint32_t read_buffer_limit, uint32_t write_buffer_limit) {
+  read_buffer_limit_ = read_buffer_limit;
+  write_buffer_limit_ = write_buffer_limit;
 
   // Due to the fact that writes to the connection and flushing data from the connection are done
   // asynchronously, we have the option of either setting the watermarks aggressively, and regularly
@@ -501,9 +502,11 @@ void ConnectionImpl::setBufferLimits(uint32_t limit) {
   // watermark from |limit + 1| to |limit| as the common case (move |limit| bytes, flush |limit|
   // bytes) would not trigger watermarks but a blocked socket (move |limit| bytes, flush 0 bytes)
   // would result in respecting the exact buffer limit.
-  if (limit > 0) {
-    write_buffer_->setWatermarks(limit + 1);
-    read_buffer_->setWatermarks(limit + 1);
+  if (write_buffer_limit > 0) {
+    write_buffer_->setWatermarks(write_buffer_limit + 1);
+  }
+  if (read_buffer_limit > 0) {
+    read_buffer_->setWatermarks(read_buffer_limit + 1);
   }
 }
 

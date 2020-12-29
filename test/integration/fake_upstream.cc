@@ -214,10 +214,10 @@ AssertionResult FakeStream::waitForHeadersComplete(milliseconds timeout) {
 namespace {
 // Perform a wait on a condition while still allowing for periodic client dispatcher runs that
 // occur on the current thread.
-bool waitForWithDispatcherRun(Event::TestTimeSystem& time_system, absl::Mutex& lock,
-                              const std::function<bool()>& condition,
-                              Event::Dispatcher& client_dispatcher, milliseconds timeout)
-    ABSL_EXCLUSIVE_LOCKS_REQUIRED(lock) {
+bool waitForWithDispatcherRun(
+    Event::TestTimeSystem& time_system, absl::Mutex& lock, const std::function<bool()>& condition,
+    absl::optional<std::reference_wrapper<Event::Dispatcher>> client_dispatcher,
+    milliseconds timeout) ABSL_EXCLUSIVE_LOCKS_REQUIRED(lock) {
   Event::TestTimeSystem::RealTimeBound bound(timeout);
   while (bound.withinBound()) {
     // Wake up every 5ms to run the client dispatcher.
@@ -225,8 +225,10 @@ bool waitForWithDispatcherRun(Event::TestTimeSystem& time_system, absl::Mutex& l
       return true;
     }
 
-    // Run the client dispatcher since we may need to process window updates, etc.
-    client_dispatcher.run(Event::Dispatcher::RunType::NonBlock);
+    if (client_dispatcher.has_value()) {
+      // Run the client dispatcher since we may need to process window updates, etc.
+      client_dispatcher->get().run(Event::Dispatcher::RunType::NonBlock);
+    }
   }
   return false;
 }
@@ -257,8 +259,9 @@ AssertionResult FakeStream::waitForData(Event::Dispatcher& client_dispatcher,
   return succeeded;
 }
 
-AssertionResult FakeStream::waitForEndStream(Event::Dispatcher& client_dispatcher,
-                                             milliseconds timeout) {
+AssertionResult FakeStream::waitForEndStream(
+    absl::optional<std::reference_wrapper<Event::Dispatcher>> client_dispatcher,
+    milliseconds timeout) {
   absl::MutexLock lock(&lock_);
   if (!waitForWithDispatcherRun(
           time_system_, lock_,
@@ -399,9 +402,9 @@ AssertionResult FakeConnectionBase::waitForHalfClose(milliseconds timeout) {
   return AssertionSuccess();
 }
 
-AssertionResult FakeHttpConnection::waitForNewStream(Event::Dispatcher& client_dispatcher,
-                                                     FakeStreamPtr& stream,
-                                                     std::chrono::milliseconds timeout) {
+AssertionResult FakeHttpConnection::waitForNewStream(
+    absl::optional<std::reference_wrapper<Event::Dispatcher>> client_dispatcher,
+    FakeStreamPtr& stream, std::chrono::milliseconds timeout) {
   absl::MutexLock lock(&lock_);
   if (!waitForWithDispatcherRun(
           time_system_, lock_,
@@ -540,8 +543,9 @@ void FakeUpstream::threadRoutine() {
 }
 
 AssertionResult FakeUpstream::waitForHttpConnection(
-    Event::Dispatcher& client_dispatcher, FakeHttpConnectionPtr& connection, milliseconds timeout,
-    uint32_t max_request_headers_kb, uint32_t max_request_headers_count,
+    absl::optional<std::reference_wrapper<Event::Dispatcher>> client_dispatcher,
+    FakeHttpConnectionPtr& connection, milliseconds timeout, uint32_t max_request_headers_kb,
+    uint32_t max_request_headers_count,
     envoy::config::core::v3::HttpProtocolOptions::HeadersWithUnderscoresAction
         headers_with_underscores_action) {
   {
@@ -564,10 +568,10 @@ AssertionResult FakeUpstream::waitForHttpConnection(
   return AssertionSuccess();
 }
 
-AssertionResult
-FakeUpstream::waitForHttpConnection(Event::Dispatcher& client_dispatcher,
-                                    std::vector<std::unique_ptr<FakeUpstream>>& upstreams,
-                                    FakeHttpConnectionPtr& connection, milliseconds timeout) {
+AssertionResult FakeUpstream::waitForHttpConnection(
+    absl::optional<std::reference_wrapper<Event::Dispatcher>> client_dispatcher,
+    std::vector<std::unique_ptr<FakeUpstream>>& upstreams, FakeHttpConnectionPtr& connection,
+    milliseconds timeout) {
   if (upstreams.empty()) {
     return AssertionFailure() << "No upstreams configured.";
   }

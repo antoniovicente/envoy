@@ -267,12 +267,17 @@ public:
    * write buffer, onBelowWriteBufferHighWatermark is called which similarly allows subscribers
    * resuming reading.
    */
-  virtual void setBufferLimits(uint32_t limit) PURE;
+  virtual void setBufferLimits(uint32_t read_buffer_limit, uint32_t write_buffer_limit) PURE;
 
   /**
-   * Get the value set with setBufferLimits.
+   * Get the read buffer limit value set with setBufferLimits.
    */
-  virtual uint32_t bufferLimit() const PURE;
+  virtual uint32_t readBufferLimit() const PURE;
+
+  /**
+   * Get the write buffer limit value set with setBufferLimits.
+   */
+  virtual uint32_t writeBufferLimit() const PURE;
 
   /**
    * @return boolean telling if the connection is currently above the high watermark.

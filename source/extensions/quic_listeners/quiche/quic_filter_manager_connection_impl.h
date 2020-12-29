@@ -78,8 +78,12 @@ public:
     // All writes should be handled by Quic internally.
     NOT_REACHED_GCOVR_EXCL_LINE;
   }
-  void setBufferLimits(uint32_t limit) override;
-  uint32_t bufferLimit() const override {
+  void setBufferLimits(uint32_t read_buffer_limit, uint32_t write_buffer_limit) override;
+  uint32_t readBufferLimit() const override {
+    // As quic connection is not HTTP1.1, this method shouldn't be called by HCM.
+    NOT_REACHED_GCOVR_EXCL_LINE;
+  }
+  uint32_t writeBufferLimit() const override {
     // As quic connection is not HTTP1.1, this method shouldn't be called by HCM.
     NOT_REACHED_GCOVR_EXCL_LINE;
   }

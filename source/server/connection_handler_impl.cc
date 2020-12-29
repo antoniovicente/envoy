@@ -487,7 +487,8 @@ void ConnectionHandlerImpl::ActiveTcpListener::newConnection(
   ActiveTcpConnectionPtr active_connection(
       new ActiveTcpConnection(active_connections, std::move(server_conn_ptr),
                               parent_.dispatcher_.timeSource(), std::move(stream_info)));
-  active_connection->connection_->setBufferLimits(config_->perConnectionBufferLimitBytes());
+  auto buffer_limit = config_->perConnectionBufferLimitBytes();
+  active_connection->connection_->setBufferLimits(buffer_limit, buffer_limit);
 
   const bool empty_filter_chain = !config_->filterChainFactory().createNetworkFilterChain(
       *active_connection->connection_, filter_chain->networkFilterFactories());

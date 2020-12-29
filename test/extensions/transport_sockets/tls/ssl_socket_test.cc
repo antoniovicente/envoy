@@ -4853,11 +4853,12 @@ protected:
           server_connection_ = dispatcher_->createServerConnection(
               std::move(socket), server_ssl_socket_factory_->createTransportSocket(nullptr),
               stream_info_);
-          server_connection_->setBufferLimits(read_buffer_limit);
+          server_connection_->setBufferLimits(read_buffer_limit, 0);
           server_connection_->addConnectionCallbacks(server_callbacks_);
           server_connection_->addReadFilter(read_filter_);
           EXPECT_EQ("", server_connection_->nextProtocol());
-          EXPECT_EQ(read_buffer_limit, server_connection_->bufferLimit());
+          EXPECT_EQ(read_buffer_limit, server_connection_->readBufferLimit());
+          EXPECT_EQ(0, server_connection_->writeBufferLimit());
         }));
 
     EXPECT_CALL(client_callbacks_, onEvent(Network::ConnectionEvent::Connected))
@@ -4933,11 +4934,12 @@ protected:
           server_connection_ = dispatcher_->createServerConnection(
               std::move(socket), server_ssl_socket_factory_->createTransportSocket(nullptr),
               stream_info_);
-          server_connection_->setBufferLimits(read_buffer_limit);
+          server_connection_->setBufferLimits(read_buffer_limit, 0);
           server_connection_->addConnectionCallbacks(server_callbacks_);
           server_connection_->addReadFilter(read_filter_);
           EXPECT_EQ("", server_connection_->nextProtocol());
-          EXPECT_EQ(read_buffer_limit, server_connection_->bufferLimit());
+          EXPECT_EQ(read_buffer_limit, server_connection_->readBufferLimit());
+          EXPECT_EQ(0, server_connection_->writeBufferLimit());
         }));
 
     dispatcher_->run(Event::Dispatcher::RunType::Block);
@@ -5084,11 +5086,12 @@ TEST_P(SslReadBufferLimitTest, SmallReadsIntoSameSlice) {
         server_connection_ = dispatcher_->createServerConnection(
             std::move(socket), server_ssl_socket_factory_->createTransportSocket(nullptr),
             stream_info_);
-        server_connection_->setBufferLimits(read_buffer_limit);
+        server_connection_->setBufferLimits(read_buffer_limit, 0);
         server_connection_->addConnectionCallbacks(server_callbacks_);
         server_connection_->addReadFilter(read_filter_);
         EXPECT_EQ("", server_connection_->nextProtocol());
-        EXPECT_EQ(read_buffer_limit, server_connection_->bufferLimit());
+        EXPECT_EQ(read_buffer_limit, server_connection_->readBufferLimit());
+        EXPECT_EQ(0, server_connection_->writeBufferLimit());
       }));
 
   EXPECT_CALL(client_callbacks_, onEvent(Network::ConnectionEvent::Connected))

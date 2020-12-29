@@ -482,7 +482,7 @@ ConnectionImpl::ConnectionImpl(Network::Connection& connection, CodecStats& stat
                                [&]() -> void { this->onAboveHighWatermark(); },
                                []() -> void { /* TODO(adisuissa): Handle overflow watermark */ })),
       max_headers_kb_(max_headers_kb), max_headers_count_(max_headers_count) {
-  output_buffer_->setWatermarks(connection.bufferLimit());
+  output_buffer_->setWatermarks(connection.writeBufferLimit());
   http_parser_init(&parser_, type);
   parser_.allow_chunked_length = 1;
   parser_.data = this;

@@ -109,7 +109,6 @@ public:
   template <class D>
   bool waitFor(absl::Mutex& mutex, const absl::Condition& condition, const D& duration) noexcept
       ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex) {
-    only_one_thread_.checkOneThread();
     return mutex.AwaitWithTimeout(condition,
                                   absl::FromChrono(std::chrono::duration_cast<Duration>(duration)));
   }

@@ -83,8 +83,9 @@ public:
   State state() const override;
   bool connecting() const override { return connecting_; }
   void write(Buffer::Instance& data, bool end_stream) override;
-  void setBufferLimits(uint32_t limit) override;
-  uint32_t bufferLimit() const override { return read_buffer_limit_; }
+  void setBufferLimits(uint32_t read_buffer_limit, uint32_t write_buffer_limit) override;
+  uint32_t readBufferLimit() const override { return read_buffer_limit_; }
+  uint32_t writeBufferLimit() const override { return write_buffer_limit_; }
   bool aboveHighWatermark() const override { return write_buffer_above_high_watermark_; }
   const ConnectionSocket::OptionsSharedPtr& socketOptions() const override {
     return socket_->options();
@@ -164,6 +165,7 @@ protected:
   // This buffer is always allocated, never nullptr.
   Buffer::InstancePtr read_buffer_;
   uint32_t read_buffer_limit_ = 0;
+  uint32_t write_buffer_limit_ = 0;
   bool connecting_{false};
   ConnectionEvent immediate_error_event_{ConnectionEvent::Connected};
   bool bind_error_{false};

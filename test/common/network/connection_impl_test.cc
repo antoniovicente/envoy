@@ -938,7 +938,7 @@ TEST_P(ConnectionImplTest, WriteWatermarks) {
     // Go from watermarks being off to being above the high watermark.
     EXPECT_CALL(client_callbacks_, onAboveWriteBufferHighWatermark());
     EXPECT_CALL(client_callbacks_, onBelowWriteBufferLowWatermark()).Times(0);
-    client_connection_->setBufferLimits(buffer_len - 3);
+    client_connection_->setBufferLimits(0, buffer_len - 3);
     EXPECT_TRUE(client_connection_->aboveHighWatermark());
   }
 
@@ -946,7 +946,7 @@ TEST_P(ConnectionImplTest, WriteWatermarks) {
     // Go from above the high watermark to in between both.
     EXPECT_CALL(client_callbacks_, onAboveWriteBufferHighWatermark()).Times(0);
     EXPECT_CALL(client_callbacks_, onBelowWriteBufferLowWatermark()).Times(0);
-    client_connection_->setBufferLimits(buffer_len + 1);
+    client_connection_->setBufferLimits(0, buffer_len + 1);
     EXPECT_TRUE(client_connection_->aboveHighWatermark());
   }
 
@@ -954,7 +954,7 @@ TEST_P(ConnectionImplTest, WriteWatermarks) {
     // Go from above the high watermark to below the low watermark.
     EXPECT_CALL(client_callbacks_, onAboveWriteBufferHighWatermark()).Times(0);
     EXPECT_CALL(client_callbacks_, onBelowWriteBufferLowWatermark());
-    client_connection_->setBufferLimits(buffer_len * 3);
+    client_connection_->setBufferLimits(0, buffer_len * 3);
     EXPECT_FALSE(client_connection_->aboveHighWatermark());
   }
 
@@ -962,7 +962,7 @@ TEST_P(ConnectionImplTest, WriteWatermarks) {
     // Go back in between and verify neither callback is called.
     EXPECT_CALL(client_callbacks_, onAboveWriteBufferHighWatermark()).Times(0);
     EXPECT_CALL(client_callbacks_, onBelowWriteBufferLowWatermark()).Times(0);
-    client_connection_->setBufferLimits(buffer_len * 2);
+    client_connection_->setBufferLimits(0, buffer_len * 2);
     EXPECT_FALSE(client_connection_->aboveHighWatermark());
   }
 
@@ -973,7 +973,7 @@ TEST_P(ConnectionImplTest, WriteWatermarks) {
 TEST_P(ConnectionImplTest, ReadWatermarks) {
 
   setUpBasicConnection();
-  client_connection_->setBufferLimits(2);
+  client_connection_->setBufferLimits(2, 0);
   std::shared_ptr<MockReadFilter> client_read_filter(new NiceMock<MockReadFilter>());
   client_connection_->addReadFilter(client_read_filter);
   connect();
@@ -1117,7 +1117,7 @@ TEST_P(ConnectionImplTest, WriteWithWatermarks) {
 
   connect();
 
-  client_connection_->setBufferLimits(2);
+  client_connection_->setBufferLimits(0, 2);
 
   std::string data_to_write = "hello world";
   Buffer::OwnedImpl first_buffer_to_write(data_to_write);
@@ -1180,7 +1180,7 @@ TEST_P(ConnectionImplTest, WatermarkFuzzing) {
   setUpBasicConnection();
 
   connect();
-  client_connection_->setBufferLimits(10);
+  client_connection_->setBufferLimits(0, 10);
 
   TestRandomGenerator rand;
   int bytes_buffered = 0;
@@ -2079,7 +2079,7 @@ TEST_F(MockTransportConnectionImplTest, ReadBufferResumeAfterReadDisable) {
   InSequence s;
 
   std::shared_ptr<MockReadFilter> read_filter(new StrictMock<MockReadFilter>());
-  connection_->setBufferLimits(5);
+  connection_->setBufferLimits(5, 0);
   connection_->enableHalfClose(true);
   connection_->addReadFilter(read_filter);
 
@@ -2146,7 +2146,7 @@ TEST_F(MockTransportConnectionImplTest, ResumeWhileAndAfterReadDisable) {
   InSequence s;
 
   std::shared_ptr<MockReadFilter> read_filter(new StrictMock<MockReadFilter>());
-  connection_->setBufferLimits(5);
+  connection_->setBufferLimits(5, 0);
   connection_->enableHalfClose(true);
   connection_->addReadFilter(read_filter);
 
@@ -2774,10 +2774,11 @@ public:
         .WillOnce(Invoke([&](Network::ConnectionSocketPtr& socket) -> void {
           server_connection_ = dispatcher_->createServerConnection(
               std::move(socket), Network::Test::createRawBufferSocket(), stream_info_);
-          server_connection_->setBufferLimits(read_buffer_limit);
+          server_connection_->setBufferLimits(read_buffer_limit, 0);
           server_connection_->addReadFilter(read_filter_);
           EXPECT_EQ("", server_connection_->nextProtocol());
-          EXPECT_EQ(read_buffer_limit, server_connection_->bufferLimit());
+          EXPECT_EQ(read_buffer_limit, server_connection_->readBufferLimit());
+          EXPECT_EQ(0, server_connection_->writeBufferLimit());
         }));
 
     uint32_t filter_seen = 0;

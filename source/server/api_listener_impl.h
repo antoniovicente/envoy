@@ -131,8 +131,9 @@ protected:
       State state() const override { return Network::Connection::State::Open; }
       bool connecting() const override { return false; }
       void write(Buffer::Instance&, bool) override { NOT_IMPLEMENTED_GCOVR_EXCL_LINE; }
-      void setBufferLimits(uint32_t) override { NOT_IMPLEMENTED_GCOVR_EXCL_LINE; }
-      uint32_t bufferLimit() const override { return 65000; }
+      void setBufferLimits(uint32_t, uint32_t) override { NOT_IMPLEMENTED_GCOVR_EXCL_LINE; }
+      uint32_t readBufferLimit() const override { return 65000; }
+      uint32_t writeBufferLimit() const override { return 65000; }
       bool aboveHighWatermark() const override { return false; }
       const Network::ConnectionSocket::OptionsSharedPtr& socketOptions() const override {
         return options_;

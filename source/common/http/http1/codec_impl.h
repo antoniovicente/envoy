@@ -206,7 +206,7 @@ public:
       connection_.readDisable(disable);
     }
   }
-  uint32_t bufferLimit() { return connection_.bufferLimit(); }
+  uint32_t bufferLimit() { return connection_.readBufferLimit(); }
   virtual bool supportsHttp10() { return false; }
   bool maybeDirectDispatch(Buffer::Instance& data);
   virtual void maybeAddSentinelBufferFragment(Buffer::Instance&) {}

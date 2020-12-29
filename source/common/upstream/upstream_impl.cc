@@ -343,7 +343,8 @@ HostImpl::createConnection(Event::Dispatcher& dispatcher, const ClusterInfo& clu
       address, cluster.sourceAddress(),
       socket_factory.createTransportSocket(std::move(transport_socket_options)),
       connection_options);
-  connection->setBufferLimits(cluster.perConnectionBufferLimitBytes());
+  auto buffer_limit = cluster.perConnectionBufferLimitBytes();
+  connection->setBufferLimits(buffer_limit, buffer_limit);
   cluster.createNetworkFilterChain(*connection);
   return connection;
 }

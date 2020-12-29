@@ -1874,7 +1874,7 @@ TEST_F(Http1ServerConnectionImplTest, ConnectRequestWithZeroContentLength) {
 }
 
 TEST_F(Http1ServerConnectionImplTest, WatermarkTest) {
-  EXPECT_CALL(connection_, bufferLimit()).WillOnce(Return(10));
+  EXPECT_CALL(connection_, writeBufferLimit()).WillOnce(Return(10));
   initialize();
 
   NiceMock<MockRequestDecoder> decoder;
@@ -2565,7 +2565,7 @@ TEST_F(Http1ClientConnectionImplTest, ConnectRejected) {
 }
 
 TEST_F(Http1ClientConnectionImplTest, WatermarkTest) {
-  EXPECT_CALL(connection_, bufferLimit()).WillOnce(Return(10));
+  EXPECT_CALL(connection_, writeBufferLimit()).WillOnce(Return(10));
   initialize();
 
   InSequence s;

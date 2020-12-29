@@ -78,8 +78,15 @@ IntegrationCodecClient::IntegrationCodecClient(
 }
 
 void IntegrationCodecClient::flushWrite() {
-  connection_->dispatcher().run(Event::Dispatcher::RunType::NonBlock);
-  // NOTE: We should run blocking until all the body data is flushed.
+  // Run until the connection's output buffer is flushed.
+  int count = 0;
+  do {
+    connection_->dispatcher().run(Event::Dispatcher::RunType::NonBlock);
+    // TODO(avd)
+    usleep(5000);
+    ++count;
+    ASSERT(count < 10000);
+  } while (high_watermark_triggered_);
 }
 
 IntegrationStreamDecoderPtr
@@ -229,6 +236,10 @@ IntegrationCodecClientPtr HttpIntegrationTest::makeRawHttpConnection(
   Upstream::HostDescriptionConstSharedPtr host_description{Upstream::makeTestHostDescription(
       cluster, fmt::format("tcp://{}:80", Network::Test::getLoopbackAddressUrlString(version_)),
       timeSystem())};
+
+  if (downstream_protocol_ != Http::CodecClient::Type::HTTP3) {
+    conn->setBufferLimits(0, 1);
+  }
   return std::make_unique<IntegrationCodecClient>(*dispatcher_, random_, std::move(conn),
                                                   host_description, downstream_protocol_);
 }
@@ -299,6 +310,16 @@ IntegrationStreamDecoderPtr HttpIntegrationTest::sendRequestAndWaitForResponse(
     const Http::TestResponseHeaderMapImpl& response_headers, uint32_t response_size,
     int upstream_index, std::chrono::milliseconds time) {
   ASSERT(codec_client_ != nullptr);
+  auto drive_upstream_thread = api_->threadFactory().createThread([&]() -> void {
+    waitForNextUpstreamRequest(upstream_index, time, false);
+    // Send response headers, and end_stream if there is no response body.
+    upstream_request_->encodeHeaders(response_headers, response_size == 0);
+    // Send any response data, with end_stream true.
+    if (response_size) {
+      upstream_request_->encodeData(response_size, true);
+    }
+  });
+
   // Send the request to Envoy.
   IntegrationStreamDecoderPtr response;
   if (request_body_size) {
@@ -306,15 +327,9 @@ IntegrationStreamDecoderPtr HttpIntegrationTest::sendRequestAndWaitForResponse(
   } else {
     response = codec_client_->makeHeaderOnlyRequest(request_headers);
   }
-  waitForNextUpstreamRequest(upstream_index, time);
-  // Send response headers, and end_stream if there is no response body.
-  upstream_request_->encodeHeaders(response_headers, response_size == 0);
-  // Send any response data, with end_stream true.
-  if (response_size) {
-    upstream_request_->encodeData(response_size, true);
-  }
   // Wait for the response to be read by the codec client.
   response->waitForEndStream();
+  drive_upstream_thread->join();
   return response;
 }
 
@@ -369,7 +384,12 @@ void HttpIntegrationTest::verifyResponse(IntegrationStreamDecoderPtr response,
 
 absl::optional<uint64_t>
 HttpIntegrationTest::waitForNextUpstreamRequest(const std::vector<uint64_t>& upstream_indices,
-                                                std::chrono::milliseconds connection_wait_timeout) {
+                                                std::chrono::milliseconds connection_wait_timeout,
+                                                bool drive_client_dispatcher) {
+  auto optional_dispatcher =
+      drive_client_dispatcher
+          ? absl::make_optional<std::reference_wrapper<Event::Dispatcher>>(*dispatcher_)
+          : absl::nullopt;
   absl::optional<uint64_t> upstream_with_request;
   // If there is no upstream connection, wait for it to be established.
   if (!fake_upstream_connection_) {
@@ -380,7 +400,7 @@ HttpIntegrationTest::waitForNextUpstreamRequest(const std::vector<uint64_t>& ups
     while (!result) {
       upstream_index = upstream_index % upstream_indices.size();
       result = fake_upstreams_[upstream_indices[upstream_index]]->waitForHttpConnection(
-          *dispatcher_, fake_upstream_connection_, std::chrono::milliseconds(5),
+          optional_dispatcher, fake_upstream_connection_, std::chrono::milliseconds(5),
           max_request_headers_kb_, max_request_headers_count_);
       if (result) {
         upstream_with_request = upstream_index;
@@ -395,18 +415,20 @@ HttpIntegrationTest::waitForNextUpstreamRequest(const std::vector<uint64_t>& ups
   }
   // Wait for the next stream on the upstream connection.
   AssertionResult result =
-      fake_upstream_connection_->waitForNewStream(*dispatcher_, upstream_request_);
+      fake_upstream_connection_->waitForNewStream(optional_dispatcher, upstream_request_);
   RELEASE_ASSERT(result, result.message());
   // Wait for the stream to be completely received.
-  result = upstream_request_->waitForEndStream(*dispatcher_);
+  result = upstream_request_->waitForEndStream(optional_dispatcher);
   RELEASE_ASSERT(result, result.message());
 
   return upstream_with_request;
 }
 
 void HttpIntegrationTest::waitForNextUpstreamRequest(
-    uint64_t upstream_index, std::chrono::milliseconds connection_wait_timeout) {
-  waitForNextUpstreamRequest(std::vector<uint64_t>({upstream_index}), connection_wait_timeout);
+    uint64_t upstream_index, std::chrono::milliseconds connection_wait_timeout,
+    bool drive_client_dispatcher) {
+  waitForNextUpstreamRequest(std::vector<uint64_t>({upstream_index}), connection_wait_timeout,
+                             drive_client_dispatcher);
 }
 
 void HttpIntegrationTest::checkSimpleRequestSuccess(uint64_t expected_request_size,

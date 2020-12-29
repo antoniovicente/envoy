@@ -907,7 +907,7 @@ TEST_F(ClusterManagerImplTest, VerifyBufferLimits) {
 
   create(parseBootstrapFromV3Yaml(yaml));
   Network::MockClientConnection* connection = new NiceMock<Network::MockClientConnection>();
-  EXPECT_CALL(*connection, setBufferLimits(8192));
+  EXPECT_CALL(*connection, setBufferLimits(8192, 8192));
   EXPECT_CALL(factory_.tls_.dispatcher_, createClientConnection_(_, _, _, _))
       .WillOnce(Return(connection));
   auto conn_data = cluster_manager_->getThreadLocalCluster("cluster_1")->tcpConn(nullptr);
@@ -1528,7 +1528,7 @@ TEST_F(ClusterManagerImplTest, DynamicAddRemove) {
       .WillByDefault(Return(ClusterInfo::Features::CLOSE_CONNECTIONS_ON_HOST_HEALTH_FAILURE));
   EXPECT_CALL(factory_.tls_.dispatcher_, createClientConnection_(_, _, _, _))
       .WillOnce(Return(connection));
-  EXPECT_CALL(*connection, setBufferLimits(_));
+  EXPECT_CALL(*connection, setBufferLimits(_, _));
   EXPECT_CALL(*connection, addConnectionCallbacks(_));
   auto conn_info = cluster_manager_->getThreadLocalCluster("fake_cluster")->tcpConn(nullptr);
   EXPECT_EQ(conn_info.connection_.get(), connection);

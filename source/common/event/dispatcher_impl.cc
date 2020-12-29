@@ -237,6 +237,7 @@ void DispatcherImpl::post(std::function<void()> callback) {
 }
 
 void DispatcherImpl::run(RunType type) {
+  ASSERT(isThreadSafe(), "DispatcherImpl::run should be called from a single thread");
   run_tid_ = api_.threadFactory().currentThreadId();
 
   // Flush all post callbacks before we run the event loop. We do this because there are post

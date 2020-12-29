@@ -131,7 +131,7 @@ public:
 
   ABSL_MUST_USE_RESULT
   testing::AssertionResult
-  waitForEndStream(Event::Dispatcher& client_dispatcher,
+  waitForEndStream(absl::optional<std::reference_wrapper<Event::Dispatcher>> client_dispatcher,
                    std::chrono::milliseconds timeout = TestUtility::DefaultTimeout);
 
   ABSL_MUST_USE_RESULT
@@ -420,7 +420,8 @@ public:
 
   ABSL_MUST_USE_RESULT
   testing::AssertionResult
-  waitForNewStream(Event::Dispatcher& client_dispatcher, FakeStreamPtr& stream,
+  waitForNewStream(absl::optional<std::reference_wrapper<Event::Dispatcher>> client_dispatcher,
+                   FakeStreamPtr& stream,
                    std::chrono::milliseconds timeout = TestUtility::DefaultTimeout);
 
   // Http::ServerConnectionCallbacks
@@ -568,7 +569,8 @@ public:
   // Returns the new connection via the connection argument.
   ABSL_MUST_USE_RESULT
   testing::AssertionResult waitForHttpConnection(
-      Event::Dispatcher& client_dispatcher, FakeHttpConnectionPtr& connection,
+      absl::optional<std::reference_wrapper<Event::Dispatcher>> client_dispatcher,
+      FakeHttpConnectionPtr& connection,
       std::chrono::milliseconds timeout = TestUtility::DefaultTimeout,
       uint32_t max_request_headers_kb = Http::DEFAULT_MAX_REQUEST_HEADERS_KB,
       uint32_t max_request_headers_count = Http::DEFAULT_MAX_HEADERS_COUNT,
@@ -586,7 +588,7 @@ public:
   // Wait for one of the upstreams to receive a connection
   ABSL_MUST_USE_RESULT
   static testing::AssertionResult
-  waitForHttpConnection(Event::Dispatcher& client_dispatcher,
+  waitForHttpConnection(absl::optional<std::reference_wrapper<Event::Dispatcher>>,
                         std::vector<std::unique_ptr<FakeUpstream>>& upstreams,
                         FakeHttpConnectionPtr& connection,
                         std::chrono::milliseconds timeout = TestUtility::DefaultTimeout);
